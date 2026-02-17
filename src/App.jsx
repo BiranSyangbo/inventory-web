@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext } from 'react'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import ProductsPage from './pages/ProductsPage'
 import './App.css'
 
 export const AuthContext = createContext();
@@ -9,6 +10,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState('dashboard');
 
   useEffect(() => {
     if (token) {
@@ -31,6 +33,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setToken(null);
+    setCurrentPage('dashboard');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
@@ -42,7 +45,10 @@ function App() {
   return (
     <AuthContext.Provider value={{ user, token, handleLogin, handleLogout }}>
       {token && user ? (
-        <DashboardPage onLogout={handleLogout} />
+        <>
+          {currentPage === 'dashboard' && <DashboardPage onLogout={handleLogout} onNavigate={setCurrentPage} />}
+          {currentPage === 'products' && <ProductsPage onLogout={handleLogout} onNavigate={setCurrentPage} />}
+        </>
       ) : (
         <LoginPage onLogin={handleLogin} />
       )}

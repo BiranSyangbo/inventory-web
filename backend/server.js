@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import authRoutes from './routes/auth.js';
 import stockRoutes from './routes/stocks.js';
+import productRoutes from './routes/products.js';
 import { verifyToken } from './middleware/auth.js';
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.use(cors({
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/stocks', verifyToken, stockRoutes);
+app.use('/api/products', verifyToken, productRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -9,7 +9,7 @@ export default function LoginPage({ onLogin }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -18,13 +18,11 @@ export default function LoginPage({ onLogin }) {
 
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register'
-      const data = isLogin 
-        ? { username, password }
-        : { username, password, name }
+      const data = { username, password }
 
       const response = await axios.post(`${apiUrl}${endpoint}`, data)
-      
-      onLogin(response.data.user, response.data.token)
+      console.log(response)
+      onLogin({}, response.data.accessToken)
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred')
     } finally {

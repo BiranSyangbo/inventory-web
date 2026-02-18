@@ -5,6 +5,7 @@ export default function LoginPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true)
   const [username, setUsername] = useState('demo@example.com')
   const [password, setPassword] = useState('password123')
+  const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -66,6 +67,23 @@ export default function LoginPage({ onLogin }) {
                 Register
               </button>
             </div>
+
+            {/* Full Name - Register only */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                  placeholder="Your full name"
+                  required={!isLogin}
+                />
+              </div>
+            )}
 
             {/* Email/Username */}
             <div>

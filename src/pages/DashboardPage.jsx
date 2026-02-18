@@ -7,7 +7,7 @@ import CategoryChart from '../components/CategoryChart'
 import LowStockAlerts from '../components/LowStockAlerts'
 import ValueChart from '../components/ValueChart'
 
-export default function DashboardPage({ onLogout }) {
+export default function DashboardPage({ onLogout, onNavigate }) {
   const { user, token } = useContext(AuthContext)
   const [inventory, setInventory] = useState([])
   const [trends, setTrends] = useState([])
@@ -86,6 +86,12 @@ export default function DashboardPage({ onLogout }) {
               <p className="text-slate-400">Inventory Management Dashboard</p>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => onNavigate('products')}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+              >
+                Products
+              </button>
               <div className="text-right">
                 <p className="text-sm text-slate-400">Logged in as</p>
                 <p className="text-white font-medium">{user?.name || user?.username}</p>

@@ -184,22 +184,6 @@ export default function ProductForm({ product, onSave, onCancel }) {
               />
             </div>
           </div>
-
-          {/* Barcode */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Barcode
-            </label>
-            <input
-              type="text"
-              name="barcode"
-              value={formData.barcode}
-              onChange={handleChange}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 font-mono"
-              placeholder="e.g., VOD-001"
-            />
-          </div>
-
           {/* Stock Information */}
           <div className="grid grid-cols-3 gap-4">
             <div>

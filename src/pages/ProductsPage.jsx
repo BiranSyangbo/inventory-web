@@ -19,7 +19,7 @@ export default function ProductsPage({ onLogout, onNavigate }) {
   const [successMessage, setSuccessMessage] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 
   // Fetch products
   useEffect(() => {
@@ -32,8 +32,8 @@ export default function ProductsPage({ onLogout, onNavigate }) {
       setError(null)
       const headers = { Authorization: `Bearer ${token}` }
       const res = await axios.get(`${apiUrl}/products`, { headers })
-      setProducts(res.data.data)
-      extractFilterOptions(res.data.data)
+      setProducts(res.data)
+      extractFilterOptions(res.data)
     } catch (err) {
       setError('Failed to load products')
       console.error(err)
@@ -52,8 +52,7 @@ export default function ProductsPage({ onLogout, onNavigate }) {
   // Filter products
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (p.barcode && p.barcode.toLowerCase().includes(searchTerm.toLowerCase()))
+                         p.brand.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = !filterCategory || p.category === filterCategory
     const matchesBrand = !filterBrand || p.brand === filterBrand
     return matchesSearch && matchesCategory && matchesBrand
@@ -146,7 +145,7 @@ export default function ProductsPage({ onLogout, onNavigate }) {
       return
     }
 
-    const headers = ['ID', 'Name', 'Category', 'Brand', 'Volume (ml)', 'Unit', 'Barcode', 'Min Stock', 'Current Stock', 'Unit Price']
+    const headers = ['ID', 'Name', 'Category', 'Brand', 'Volume (ml)', 'Unit', 'Min Stock', 'Current Stock', 'Unit Price']
     const rows = filteredProducts.map(p => [
       p.id,
       p.name,
@@ -154,10 +153,9 @@ export default function ProductsPage({ onLogout, onNavigate }) {
       p.brand,
       p.volumeMl || '',
       p.unit,
-      p.barcode || '',
       p.minStock,
       p.currentStock,
-      p.unitPrice
+      p.unit
     ])
 
     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
@@ -191,7 +189,6 @@ export default function ProductsPage({ onLogout, onNavigate }) {
             brand: values[3],
             volumeMl: values[4] ? parseInt(values[4]) : null,
             unit: values[5],
-            barcode: values[6],
             minStock: parseInt(values[7]) || 0,
             currentStock: parseInt(values[8]) || 0,
             unitPrice: parseFloat(values[9]) || 0
@@ -321,7 +318,7 @@ export default function ProductsPage({ onLogout, onNavigate }) {
             {/* Stats */}
             <div className="border-t border-slate-700 pt-4">
               <p className="text-slate-400 text-sm">Total Products: <span className="text-white font-bold">{filteredProducts.length}</span></p>
-              <p className="text-slate-400 text-sm">Total Value: <span className="text-green-400 font-bold">${filteredProducts.reduce((sum, p) => sum + (p.currentStock * p.unitPrice), 0).toFixed(2)}</span></p>
+              <p className="text-slate-400 text-sm">Total Value: <span className="text-green-400 font-bold">${filteredProducts.reduce((sum, p) => sum + (p.currentStock * p.unit), 0).toFixed(2)}</span></p>
             </div>
           </div>
         </aside>

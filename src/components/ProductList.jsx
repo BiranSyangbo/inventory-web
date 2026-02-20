@@ -1,4 +1,17 @@
+import React from 'react'
+
 export default function ProductList({ products, loading, onEdit, onDelete }) {
+  const [deletingId, setDeletingId] = React.useState(null)
+
+  const handleDelete = async (productId) => {
+    setDeletingId(productId)
+    try {
+      await onDelete(productId)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -72,15 +85,34 @@ export default function ProductList({ products, loading, onEdit, onDelete }) {
                   <div className="flex gap-2 justify-center">
                     <button
                       onClick={() => onEdit(product)}
-                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
+                      disabled={deletingId !== null}
+                      className={`px-3 py-1 text-white text-xs rounded transition ${
+                        deletingId !== null 
+                          ? 'bg-blue-600 opacity-50 cursor-not-allowed' 
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => onDelete(product.id)}
-                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
+                      onClick={() => handleDelete(product.id)}
+                      disabled={deletingId !== null}
+                      className={`px-3 py-1 text-white text-xs rounded transition flex items-center gap-1 ${
+                        deletingId === product.id
+                          ? 'bg-red-600 opacity-70 cursor-not-allowed'
+                          : deletingId !== null
+                          ? 'bg-red-600 opacity-50 cursor-not-allowed'
+                          : 'bg-red-600 hover:bg-red-700'
+                      }`}
                     >
-                      Delete
+                      {deletingId === product.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete'
+                      )}
                     </button>
                   </div>
                 </td>

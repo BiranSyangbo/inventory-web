@@ -16,6 +16,8 @@ export default function ProductsPage({ onLogout, onNavigate }) {
   const [filterBrand, setFilterBrand] = useState('')
   const [categories, setCategories] = useState([])
   const [brands, setBrands] = useState([])
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -68,37 +70,73 @@ export default function ProductsPage({ onLogout, onNavigate }) {
   }
 
   const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return
+    const productName = products.find(p => p.id === productId)?.name || 'this product'
+    if (!window.confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) return
     
     try {
+      setIsLoading(true)
+      setError(null)
       const headers = { Authorization: `Bearer ${token}` }
-      await axios.delete(`${apiUrl}/products/${productId}`, { headers })
-      setProducts(products.filter(p => p.id !== productId))
+      const response = await axios.delete(`${apiUrl}/products/${productId}`, { headers })
+      
+      if (response.data.success) {
+        setProducts(products.filter(p => p.id !== productId))
+        setSuccessMessage(`Product "${productName}" deleted successfully`)
+        setTimeout(() => setSuccessMessage(null), 3000)
+      } else {
+        setError(response.data.message || 'Failed to delete product')
+      }
     } catch (err) {
-      setError('Failed to delete product')
-      console.error(err)
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to delete product'
+      setError(`Error: ${errorMessage}`)
+      console.error('[v0] Delete error:', err)
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleSaveProduct = async (productData) => {
     try {
+      setIsLoading(true)
+      setError(null)
       const headers = { Authorization: `Bearer ${token}` }
+      const isUpdate = !!selectedProduct
+      const operationType = isUpdate ? 'updated' : 'created'
       
-      if (selectedProduct) {
+      if (isUpdate) {
         // Update
         const res = await axios.put(`${apiUrl}/products/${selectedProduct.id}`, productData, { headers })
-        setProducts(products.map(p => p.id === selectedProduct.id ? res.data.data : p))
+        
+        if (res.data.success) {
+          setProducts(products.map(p => p.id === selectedProduct.id ? res.data.data : p))
+          setSuccessMessage(`Product "${productData.name}" ${operationType} successfully`)
+          setTimeout(() => setSuccessMessage(null), 3000)
+        } else {
+          setError(res.data.message || 'Failed to update product')
+          return
+        }
       } else {
         // Create
         const res = await axios.post(`${apiUrl}/products`, productData, { headers })
-        setProducts([...products, res.data.data])
+        
+        if (res.data.success) {
+          setProducts([...products, res.data.data])
+          setSuccessMessage(`Product "${productData.name}" ${operationType} successfully`)
+          setTimeout(() => setSuccessMessage(null), 3000)
+        } else {
+          setError(res.data.message || 'Failed to create product')
+          return
+        }
       }
       
       setShowForm(false)
       setSelectedProduct(null)
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save product')
-      console.error(err)
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to save product'
+      setError(`Error: ${errorMessage}`)
+      console.error('[v0] Save error:', err)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -292,9 +330,22 @@ export default function ProductsPage({ onLogout, onNavigate }) {
         <main className="flex-1 overflow-y-auto">
           <div className="p-8">
             {error && (
-              <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-lg text-red-200">
-                {error}
-                <button onClick={() => setError(null)} className="ml-2 text-sm underline">Dismiss</button>
+              <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-lg text-red-200 flex items-start justify-between">
+                <div>
+                  <p className="font-semibold">Error</p>
+                  <p className="text-sm mt-1">{error}</p>
+                </div>
+                <button onClick={() => setError(null)} className="text-sm underline hover:no-underline ml-4">Dismiss</button>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="mb-6 p-4 bg-green-900 border border-green-700 rounded-lg text-green-200 flex items-start justify-between">
+                <div>
+                  <p className="font-semibold">Success</p>
+                  <p className="text-sm mt-1">{successMessage}</p>
+                </div>
+                <button onClick={() => setSuccessMessage(null)} className="text-sm underline hover:no-underline ml-4">Dismiss</button>
               </div>
             )}
 
@@ -306,6 +357,7 @@ export default function ProductsPage({ onLogout, onNavigate }) {
                   setShowForm(false)
                   setSelectedProduct(null)
                 }}
+                isLoading={isLoading}
               />
             ) : (
               <ProductList

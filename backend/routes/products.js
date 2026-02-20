@@ -121,13 +121,21 @@ router.post('/', (req, res) => {
       return res.status(400).json({ success: false, message: 'Product name is required' });
     }
 
-    if (minStock !== undefined && minStock < 0) {
-      return res.status(400).json({ success: false, message: 'Minimum stock cannot be negative' });
+    if (minStock !== undefined && (isNaN(minStock) || minStock < 0)) {
+      return res.status(400).json({ success: false, message: 'Minimum stock must be a non-negative number' });
+    }
+
+    if (currentStock !== undefined && (isNaN(currentStock) || currentStock < 0)) {
+      return res.status(400).json({ success: false, message: 'Current stock must be a non-negative number' });
+    }
+
+    if (unitPrice !== undefined && (isNaN(unitPrice) || unitPrice < 0)) {
+      return res.status(400).json({ success: false, message: 'Unit price must be a non-negative number' });
     }
 
     // Check for duplicate barcode
     if (barcode && products.some(p => p.barcode === barcode)) {
-      return res.status(400).json({ success: false, message: 'Barcode already exists' });
+      return res.status(400).json({ success: false, message: `Barcode "${barcode}" already exists` });
     }
 
     const newProduct = {
@@ -144,18 +152,24 @@ router.post('/', (req, res) => {
     };
 
     products.push(newProduct);
-    res.status(201).json({ success: true, message: 'Product created', data: newProduct });
+    res.status(201).json({ success: true, message: 'Product created successfully', data: newProduct });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error creating product' });
+    console.error('[Backend] Error creating product:', error);
+    res.status(500).json({ success: false, message: 'Internal server error while creating product' });
   }
 });
 
 // UPDATE product
 router.put('/:id', (req, res) => {
   try {
-    const productIndex = products.findIndex(p => p.id === parseInt(req.params.id));
+    const productId = parseInt(req.params.id);
+    if (isNaN(productId)) {
+      return res.status(400).json({ success: false, message: 'Invalid product ID' });
+    }
+
+    const productIndex = products.findIndex(p => p.id === productId);
     if (productIndex === -1) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+      return res.status(404).json({ success: false, message: `Product with ID ${productId} not found` });
     }
 
     const { name, category, brand, volumeMl, unit, barcode, minStock, currentStock, unitPrice } = req.body;
@@ -164,13 +178,21 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ success: false, message: 'Product name cannot be empty' });
     }
 
-    if (minStock !== undefined && minStock < 0) {
-      return res.status(400).json({ success: false, message: 'Minimum stock cannot be negative' });
+    if (minStock !== undefined && (isNaN(minStock) || minStock < 0)) {
+      return res.status(400).json({ success: false, message: 'Minimum stock must be a non-negative number' });
+    }
+
+    if (currentStock !== undefined && (isNaN(currentStock) || currentStock < 0)) {
+      return res.status(400).json({ success: false, message: 'Current stock must be a non-negative number' });
+    }
+
+    if (unitPrice !== undefined && (isNaN(unitPrice) || unitPrice < 0)) {
+      return res.status(400).json({ success: false, message: 'Unit price must be a non-negative number' });
     }
 
     // Check for duplicate barcode (excluding current product)
-    if (barcode && products.some(p => p.barcode === barcode && p.id !== parseInt(req.params.id))) {
-      return res.status(400).json({ success: false, message: 'Barcode already exists' });
+    if (barcode && products.some(p => p.barcode === barcode && p.id !== productId)) {
+      return res.status(400).json({ success: false, message: `Barcode "${barcode}" is already used by another product` });
     }
 
     // Update only provided fields
@@ -188,24 +210,31 @@ router.put('/:id', (req, res) => {
     };
 
     products[productIndex] = updatedProduct;
-    res.json({ success: true, message: 'Product updated', data: updatedProduct });
+    res.json({ success: true, message: 'Product updated successfully', data: updatedProduct });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error updating product' });
+    console.error('[Backend] Error updating product:', error);
+    res.status(500).json({ success: false, message: 'Internal server error while updating product' });
   }
 });
 
 // DELETE product
 router.delete('/:id', (req, res) => {
   try {
-    const productIndex = products.findIndex(p => p.id === parseInt(req.params.id));
-    if (productIndex === -1) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    const productId = parseInt(req.params.id);
+    if (isNaN(productId)) {
+      return res.status(400).json({ success: false, message: 'Invalid product ID' });
     }
 
-    const deletedProduct = products.splice(productIndex, 1);
-    res.json({ success: true, message: 'Product deleted', data: deletedProduct[0] });
+    const productIndex = products.findIndex(p => p.id === productId);
+    if (productIndex === -1) {
+      return res.status(404).json({ success: false, message: `Product with ID ${productId} not found` });
+    }
+
+    const deletedProduct = products.splice(productIndex, 1)[0];
+    res.json({ success: true, message: `Product "${deletedProduct.name}" deleted successfully`, data: deletedProduct });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error deleting product' });
+    console.error('[Backend] Error deleting product:', error);
+    res.status(500).json({ success: false, message: 'Internal server error while deleting product' });
   }
 });
 

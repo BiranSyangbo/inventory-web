@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export default function ProductForm({ product, onSave, onCancel }) {
+export default function ProductForm({ product, onSave, onCancel, isLoading = false }) {
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -257,14 +257,31 @@ export default function ProductForm({ product, onSave, onCancel }) {
           <div className="flex gap-4 pt-6 border-t border-slate-700">
             <button
               type="submit"
-              className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+              disabled={isLoading}
+              className={`flex-1 px-6 py-2 text-white font-medium rounded-lg transition flex items-center justify-center gap-2 ${
+                isLoading 
+                  ? 'bg-blue-600 opacity-70 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              {product ? 'Update Product' : 'Create Product'}
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Processing...
+                </>
+              ) : (
+                product ? 'Update Product' : 'Create Product'
+              )}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition"
+              disabled={isLoading}
+              className={`flex-1 px-6 py-2 text-white font-medium rounded-lg transition ${
+                isLoading 
+                  ? 'bg-slate-700 opacity-70 cursor-not-allowed' 
+                  : 'bg-slate-700 hover:bg-slate-600'
+              }`}
             >
               Cancel
             </button>

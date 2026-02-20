@@ -159,8 +159,8 @@ export default function ProductsPage({ onLogout, onNavigate }) {
             unitPrice: parseFloat(values[9]) || 0
           }
 
-          const headerRows = axios.headers || { Authorization: `Bearer ${token}` }
-          await axios.post(`${apiUrl}/products`, productData, { headers: headerRows })
+          const axiosHeaders = { Authorization: `Bearer ${token}` }
+          await axios.post(`${apiUrl}/products`, productData, { headers: axiosHeaders })
         }
 
         fetchProducts()

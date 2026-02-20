@@ -56,6 +56,35 @@ let products = [
 
 let nextId = 5;
 
+// SEARCH and FILTER products (must be before /:id route)
+router.get('/search/filter', (req, res) => {
+  try {
+    const { search, category, brand } = req.query;
+    let filtered = products;
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(searchLower) ||
+        p.brand.toLowerCase().includes(searchLower) ||
+        p.barcode?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (category) {
+      filtered = filtered.filter(p => p.category === category);
+    }
+
+    if (brand) {
+      filtered = filtered.filter(p => p.brand === brand);
+    }
+
+    res.json({ success: true, data: filtered, count: filtered.length });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error filtering products' });
+  }
+});
+
 // GET all products
 router.get('/', (req, res) => {
   try {
@@ -177,35 +206,6 @@ router.delete('/:id', (req, res) => {
     res.json({ success: true, message: 'Product deleted', data: deletedProduct[0] });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error deleting product' });
-  }
-});
-
-// SEARCH and FILTER products
-router.get('/search/filter', (req, res) => {
-  try {
-    const { search, category, brand } = req.query;
-    let filtered = products;
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(searchLower) ||
-        p.brand.toLowerCase().includes(searchLower) ||
-        p.barcode?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (category) {
-      filtered = filtered.filter(p => p.category === category);
-    }
-
-    if (brand) {
-      filtered = filtered.filter(p => p.brand === brand);
-    }
-
-    res.json({ success: true, data: filtered, count: filtered.length });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error filtering products' });
   }
 });
 

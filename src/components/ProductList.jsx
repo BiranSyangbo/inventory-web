@@ -28,7 +28,6 @@ export default function ProductList({ products, loading, onEdit, onDelete }) {
             <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Category</th>
             <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Brand</th>
             <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Volume</th>
-            <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Barcode</th>
             <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Current Stock</th>
             <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Min Stock</th>
             <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">Unit Price</th>
@@ -55,9 +54,6 @@ export default function ProductList({ products, loading, onEdit, onDelete }) {
                 <td className="px-6 py-4 text-sm text-slate-300">
                   {product.volumeMl ? `${product.volumeMl}ml` : 'N/A'}
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-400 font-mono">
-                  {product.barcode || '-'}
-                </td>
                 <td className="px-6 py-4 text-sm text-center">
                   <span className={isLowStock ? 'text-red-400 font-bold' : 'text-white'}>
                     {product.currentStock}
@@ -65,7 +61,7 @@ export default function ProductList({ products, loading, onEdit, onDelete }) {
                 </td>
                 <td className="px-6 py-4 text-sm text-center text-slate-300">{product.minStock}</td>
                 <td className="px-6 py-4 text-sm text-right text-green-400 font-medium">
-                  ${product.unitPrice.toFixed(2)}
+                  ${product.unit}
                 </td>
                 <td className="px-6 py-4 text-sm text-right text-blue-400 font-medium">${totalValue}</td>
                 <td className="px-6 py-4 text-center">

@@ -56,3 +56,6 @@ tsconfig.json
 /projects/bank-shell/src/assets/translations/
 /projects/corporate-shell/src/assets/translations/
 /.vscode/
+
+
+/.idea/

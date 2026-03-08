@@ -2,49 +2,57 @@ import { useState, useEffect, createContext } from 'react'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import ProductsPage from './pages/ProductsPage'
+import apiClient from './lib/apiClient'
 import './App.css'
 
-export const AuthContext = createContext();
+export const AuthContext = createContext()
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [username, setUsername] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState('dashboard')
+
+  const token = localStorage.getItem('accessToken')
 
   useEffect(() => {
     if (token) {
-      // Verify token is still valid
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
+      apiClient.get('/api/auth/me')
+        .then(({ data }) => setUsername(data.username))
+        .catch(() => {
+          localStorage.clear()
+          setUsername(null)
+        })
+        .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
     }
-    setLoading(false);
-  }, [token]);
+  }, [])
 
-  const handleLogin = (userData, authToken) => {
-    setUser(userData);
-    setToken(authToken);
-    localStorage.setItem('token', authToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
+  const handleLogin = (user, accessToken, refreshToken) => {
+    localStorage.setItem('accessToken', accessToken)
+    localStorage.setItem('refreshToken', refreshToken)
+    setUsername(user)
+    setCurrentPage('dashboard')
+  }
 
-  const handleLogout = () => {
-    setUser(null);
-    setToken(null);
-    setCurrentPage('dashboard');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  };
+  const handleLogout = async () => {
+    const refreshToken = localStorage.getItem('refreshToken')
+    try {
+      if (refreshToken) await apiClient.post('/api/auth/logout', { refreshToken })
+    } finally {
+      localStorage.clear()
+      setUsername(null)
+      setCurrentPage('dashboard')
+    }
+  }
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen bg-slate-900 text-slate-300">Loading...</div>
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, handleLogin, handleLogout }}>
-      {token && user ? (
+    <AuthContext.Provider value={{ username, handleLogin, handleLogout }}>
+      {token && username ? (
         <>
           {currentPage === 'dashboard' && <DashboardPage onLogout={handleLogout} onNavigate={setCurrentPage} />}
           {currentPage === 'products' && <ProductsPage onLogout={handleLogout} onNavigate={setCurrentPage} />}

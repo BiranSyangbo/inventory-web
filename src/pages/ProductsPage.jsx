@@ -1,11 +1,11 @@
 import { useState, useEffect, useContext } from 'react'
-import axios from 'axios'
 import { AuthContext } from '../App'
+import apiClient from '../lib/apiClient'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
 
 export default function ProductsPage({ onLogout, onNavigate }) {
-  const { user, token } = useContext(AuthContext)
+  const { username } = useContext(AuthContext)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -19,21 +19,20 @@ export default function ProductsPage({ onLogout, onNavigate }) {
   const [successMessage, setSuccessMessage] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
-
-  // Fetch products
   useEffect(() => {
     fetchProducts()
-  }, [token])
+  }, [])
 
   const fetchProducts = async () => {
     try {
       setLoading(true)
       setError(null)
-      const headers = { Authorization: `Bearer ${token}` }
-      const res = await axios.get(`${apiUrl}/products`, { headers })
-      setProducts(res.data)
-      extractFilterOptions(res.data)
+      const data = await apiClient.get('/api/products').then(r => r.data)
+      setProducts(data)
+      const uniqueCategories = [...new Set(data.map(p => p.category).filter(Boolean))]
+      const uniqueBrands = [...new Set(data.map(p => p.brand).filter(Boolean))]
+      setCategories(uniqueCategories)
+      setBrands(uniqueBrands)
     } catch (err) {
       setError('Failed to load products')
       console.error(err)
@@ -42,17 +41,12 @@ export default function ProductsPage({ onLogout, onNavigate }) {
     }
   }
 
-  const extractFilterOptions = (productList) => {
-    const uniqueCategories = [...new Set(productList.map(p => p.category).filter(Boolean))]
-    const uniqueBrands = [...new Set(productList.map(p => p.brand).filter(Boolean))]
-    setCategories(uniqueCategories)
-    setBrands(uniqueBrands)
-  }
-
-  // Filter products
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.brand.toLowerCase().includes(searchTerm.toLowerCase())
+    const name = p.name?.toLowerCase() || ''
+    const brand = p.brand?.toLowerCase() || ''
+    const barcode = p.barcode?.toLowerCase() || ''
+    const term = searchTerm.toLowerCase()
+    const matchesSearch = name.includes(term) || brand.includes(term) || barcode.includes(term)
     const matchesCategory = !filterCategory || p.category === filterCategory
     const matchesBrand = !filterBrand || p.brand === filterBrand
     return matchesSearch && matchesCategory && matchesBrand
@@ -70,25 +64,17 @@ export default function ProductsPage({ onLogout, onNavigate }) {
 
   const handleDeleteProduct = async (productId) => {
     const productName = products.find(p => p.id === productId)?.name || 'this product'
-    if (!window.confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) return
-    
+    if (!window.confirm(`Are you sure you want to delete "${productName}"?`)) return
+
     try {
       setIsLoading(true)
       setError(null)
-      const headers = { Authorization: `Bearer ${token}` }
-      const response = await axios.delete(`${apiUrl}/products/${productId}`, { headers })
-      
-      if (response.data.success) {
-        setProducts(products.filter(p => p.id !== productId))
-        setSuccessMessage(`Product "${productName}" deleted successfully`)
-        setTimeout(() => setSuccessMessage(null), 3000)
-      } else {
-        setError(response.data.message || 'Failed to delete product')
-      }
+      await apiClient.delete(`/api/products/${productId}`)
+      setProducts(products.filter(p => p.id !== productId))
+      setSuccessMessage(`Product "${productName}" deleted successfully`)
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to delete product'
-      setError(`Error: ${errorMessage}`)
-      console.error('[v0] Delete error:', err)
+      setError(err.response?.data?.message || 'Failed to delete product')
     } finally {
       setIsLoading(false)
     }
@@ -98,42 +84,23 @@ export default function ProductsPage({ onLogout, onNavigate }) {
     try {
       setIsLoading(true)
       setError(null)
-      const headers = { Authorization: `Bearer ${token}` }
       const isUpdate = !!selectedProduct
-      const operationType = isUpdate ? 'updated' : 'created'
-      
+
       if (isUpdate) {
-        // Update
-        const res = await axios.put(`${apiUrl}/products/${selectedProduct.id}`, productData, { headers })
-        
-        if (res.data.success) {
-          setProducts(products.map(p => p.id === selectedProduct.id ? res.data.data : p))
-          setSuccessMessage(`Product "${productData.name}" ${operationType} successfully`)
-          setTimeout(() => setSuccessMessage(null), 3000)
-        } else {
-          setError(res.data.message || 'Failed to update product')
-          return
-        }
+        const updated = await apiClient.put(`/api/products/${selectedProduct.id}`, productData).then(r => r.data)
+        setProducts(products.map(p => p.id === selectedProduct.id ? updated : p))
+        setSuccessMessage(`Product "${productData.name}" updated successfully`)
       } else {
-        // Create
-        const res = await axios.post(`${apiUrl}/products`, productData, { headers })
-        
-        if (res.data.success) {
-          setProducts([...products, res.data.data])
-          setSuccessMessage(`Product "${productData.name}" ${operationType} successfully`)
-          setTimeout(() => setSuccessMessage(null), 3000)
-        } else {
-          setError(res.data.message || 'Failed to create product')
-          return
-        }
+        const created = await apiClient.post('/api/products', productData).then(r => r.data)
+        setProducts([...products, created])
+        setSuccessMessage(`Product "${productData.name}" created successfully`)
       }
-      
+
+      setTimeout(() => setSuccessMessage(null), 3000)
       setShowForm(false)
       setSelectedProduct(null)
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to save product'
-      setError(`Error: ${errorMessage}`)
-      console.error('[v0] Save error:', err)
+      setError(err.response?.data?.message || 'Failed to save product')
     } finally {
       setIsLoading(false)
     }
@@ -145,17 +112,18 @@ export default function ProductsPage({ onLogout, onNavigate }) {
       return
     }
 
-    const headers = ['ID', 'Name', 'Category', 'Brand', 'Volume (ml)', 'Unit', 'Min Stock', 'Current Stock', 'Unit Price']
+    const headers = ['ID', 'Name', 'Category', 'Brand', 'Volume (ml)', 'Unit', 'Barcode', 'Min Stock', 'Selling Price', 'Status']
     const rows = filteredProducts.map(p => [
       p.id,
       p.name,
-      p.category,
-      p.brand,
+      p.category || '',
+      p.brand || '',
       p.volumeMl || '',
-      p.unit,
+      p.unit || '',
+      p.barcode || '',
       p.minStock,
-      p.currentStock,
-      p.unit
+      p.sellingPrice,
+      p.status
     ])
 
     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
@@ -166,46 +134,6 @@ export default function ProductsPage({ onLogout, onNavigate }) {
     a.download = 'products.csv'
     a.click()
     window.URL.revokeObjectURL(url)
-  }
-
-  const handleImportCSV = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = async (event) => {
-      try {
-        const csv = event.target.result
-        const lines = csv.split('\n')
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-        
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue
-          
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
-          const productData = {
-            name: values[1],
-            category: values[2],
-            brand: values[3],
-            volumeMl: values[4] ? parseInt(values[4]) : null,
-            unit: values[5],
-            minStock: parseInt(values[7]) || 0,
-            currentStock: parseInt(values[8]) || 0,
-            unitPrice: parseFloat(values[9]) || 0
-          }
-
-          const axiosHeaders = { Authorization: `Bearer ${token}` }
-          await axios.post(`${apiUrl}/products`, productData, { headers: axiosHeaders })
-        }
-
-        fetchProducts()
-        alert('Products imported successfully')
-      } catch (err) {
-        setError('Failed to import CSV')
-        console.error(err)
-      }
-    }
-    reader.readAsText(file)
   }
 
   return (
@@ -227,7 +155,7 @@ export default function ProductsPage({ onLogout, onNavigate }) {
               </button>
               <div className="text-right">
                 <p className="text-sm text-slate-400">Logged in as</p>
-                <p className="text-white font-medium">{user?.name || user?.username}</p>
+                <p className="text-white font-medium">{username}</p>
               </div>
               <button
                 onClick={onLogout}
@@ -255,19 +183,10 @@ export default function ProductsPage({ onLogout, onNavigate }) {
               </button>
               <button
                 onClick={handleExportCSV}
-                className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition mb-2"
+                className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
               >
                 Export CSV
               </button>
-              <label className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition text-center cursor-pointer block">
-                Import CSV
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleImportCSV}
-                  className="hidden"
-                />
-              </label>
             </div>
 
             {/* Search */}
@@ -285,7 +204,7 @@ export default function ProductsPage({ onLogout, onNavigate }) {
             {/* Filters */}
             <div>
               <h3 className="text-slate-300 text-sm font-semibold mb-3 uppercase tracking-wider">Filters</h3>
-              
+
               <div className="mb-4">
                 <label className="text-slate-400 text-sm font-medium block mb-2">Category</label>
                 <select
@@ -318,7 +237,6 @@ export default function ProductsPage({ onLogout, onNavigate }) {
             {/* Stats */}
             <div className="border-t border-slate-700 pt-4">
               <p className="text-slate-400 text-sm">Total Products: <span className="text-white font-bold">{filteredProducts.length}</span></p>
-              <p className="text-slate-400 text-sm">Total Value: <span className="text-green-400 font-bold">${filteredProducts.reduce((sum, p) => sum + (p.currentStock * p.unit), 0).toFixed(2)}</span></p>
             </div>
           </div>
         </aside>

@@ -1,24 +1,17 @@
 import { useState, useEffect, useContext } from 'react'
-import axios from 'axios'
 import { AuthContext } from '../App'
+import apiClient from '../lib/apiClient'
 import InventoryChart from '../components/InventoryChart'
-import TrendsChart from '../components/TrendsChart'
 import CategoryChart from '../components/CategoryChart'
 import LowStockAlerts from '../components/LowStockAlerts'
 import ValueChart from '../components/ValueChart'
 
 export default function DashboardPage({ onLogout, onNavigate }) {
-  const { user, token } = useContext(AuthContext)
+  const { username } = useContext(AuthContext)
   const [inventory, setInventory] = useState([])
-  const [trends, setTrends] = useState([])
-  const [categories, setCategories] = useState([])
-  const [alerts, setAlerts] = useState([])
-  const [valueData, setValueData] = useState({ totalValue: 0, categories: [] })
-  const [summary, setSummary] = useState(null)
+  const [lowStock, setLowStock] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,43 +19,49 @@ export default function DashboardPage({ onLogout, onNavigate }) {
         setLoading(true)
         setError(null)
 
-        const headers = {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-
-        // Fetch all data in parallel
-        const [inventoryRes, trendsRes, categoriesRes, alertsRes, valueRes, summaryRes] = await Promise.all([
-          axios.get(`${apiUrl}/stocks/inventory`, { headers }),
-          axios.get(`${apiUrl}/stocks/history`, { headers }),
-          axios.get(`${apiUrl}/stocks/categories`, { headers }),
-          axios.get(`${apiUrl}/stocks/alerts`, { headers }),
-          axios.get(`${apiUrl}/stocks/value`, { headers }),
-          axios.get(`${apiUrl}/stocks/summary`, { headers })
+        const [inventoryRes, lowStockRes] = await Promise.all([
+          apiClient.get('/api/inventory'),
+          apiClient.get('/api/inventory/low-stock'),
         ])
 
         setInventory(inventoryRes.data)
-        setTrends(trendsRes.data)
-        setCategories(categoriesRes.data)
-        setAlerts(alertsRes.data)
-        setValueData(valueRes.data)
-        setSummary(summaryRes.data)
+        setLowStock(lowStockRes.data)
       } catch (err) {
-        console.error('Error fetching data:', err)
+        console.error('Error fetching dashboard data:', err)
         setError('Failed to load dashboard data')
       } finally {
         setLoading(false)
       }
     }
 
-    if (token) {
-      fetchData()
-    }
-  }, [token, apiUrl])
+    fetchData()
+  }, [])
 
-  const handleLogoutClick = () => {
-    onLogout()
-  }
+  // Derive summary stats from inventory data
+  const totalValue = inventory.reduce((sum, item) => sum + parseFloat(item.totalValue || 0), 0)
+  const categoryCount = new Set(inventory.map(i => i.category).filter(Boolean)).size
+
+  // Prepare chart data — top 10 products by stock quantity
+  const inventoryChartData = [...inventory]
+    .sort((a, b) => b.totalQuantity - a.totalQuantity)
+    .slice(0, 10)
+    .map(i => ({ name: i.name, quantity: i.totalQuantity }))
+
+  // Category breakdown for pie chart
+  const categoryMap = {}
+  inventory.forEach(item => {
+    const cat = item.category || 'Other'
+    categoryMap[cat] = (categoryMap[cat] || 0) + 1
+  })
+  const categoryChartData = Object.entries(categoryMap).map(([name, value]) => ({ name, value }))
+
+  // Value breakdown by category for value chart
+  const valueMap = {}
+  inventory.forEach(item => {
+    const cat = item.category || 'Other'
+    valueMap[cat] = (valueMap[cat] || 0) + parseFloat(item.totalValue || 0)
+  })
+  const valueCategoryData = Object.entries(valueMap).map(([name, value]) => ({ name, value }))
 
   if (loading) {
     return (
@@ -94,10 +93,10 @@ export default function DashboardPage({ onLogout, onNavigate }) {
               </button>
               <div className="text-right">
                 <p className="text-sm text-slate-400">Logged in as</p>
-                <p className="text-white font-medium">{user?.name || user?.username}</p>
+                <p className="text-white font-medium">{username}</p>
               </div>
               <button
-                onClick={handleLogoutClick}
+                onClick={onLogout}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition"
               >
                 Logout
@@ -116,44 +115,37 @@ export default function DashboardPage({ onLogout, onNavigate }) {
         )}
 
         {/* Summary Cards */}
-        {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <p className="text-slate-400 text-sm font-medium mb-2">Total Items</p>
-              <p className="text-3xl font-bold text-blue-400">{summary.totalItems}</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <p className="text-slate-400 text-sm font-medium mb-2">Total Value</p>
-              <p className="text-3xl font-bold text-green-400">${summary.totalValue.toFixed(2)}</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <p className="text-slate-400 text-sm font-medium mb-2">Low Stock Items</p>
-              <p className="text-3xl font-bold text-yellow-400">{summary.lowStockCount}</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <p className="text-slate-400 text-sm font-medium mb-2">Categories</p>
-              <p className="text-3xl font-bold text-purple-400">{summary.categoryCount}</p>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium mb-2">Total Products</p>
+            <p className="text-3xl font-bold text-blue-400">{inventory.length}</p>
           </div>
-        )}
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium mb-2">Total Stock Value</p>
+            <p className="text-3xl font-bold text-green-400">
+              {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'NPR' }).format(totalValue)}
+            </p>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium mb-2">Low Stock Items</p>
+            <p className="text-3xl font-bold text-yellow-400">{lowStock.length}</p>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <p className="text-slate-400 text-sm font-medium mb-2">Categories</p>
+            <p className="text-3xl font-bold text-purple-400">{categoryCount}</p>
+          </div>
+        </div>
 
         {/* Charts Grid */}
         <div className="space-y-6">
-          {/* Row 1: Inventory and Trends */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <InventoryChart data={inventory} />
-            <TrendsChart data={trends} />
+            <InventoryChart data={inventoryChartData} />
+            <CategoryChart data={categoryChartData} />
           </div>
 
-          {/* Row 2: Category and Value */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <CategoryChart data={categories} />
-            <ValueChart data={valueData.categories} totalValue={valueData.totalValue} />
-          </div>
-
-          {/* Row 3: Low Stock Alerts */}
-          <div>
-            <LowStockAlerts alerts={alerts} />
+            <ValueChart data={valueCategoryData} totalValue={totalValue} />
+            <LowStockAlerts alerts={lowStock} />
           </div>
         </div>
       </main>

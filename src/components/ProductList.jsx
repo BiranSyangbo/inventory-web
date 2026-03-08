@@ -41,50 +41,58 @@ export default function ProductList({ products, loading, onEdit, onDelete }) {
             <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Category</th>
             <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Brand</th>
             <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Volume</th>
-            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Current Stock</th>
+            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Stock</th>
             <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Min Stock</th>
-            <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">Unit Price</th>
-            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Value</th>
+            <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">Selling Price</th>
+            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Status</th>
             <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Actions</th>
           </tr>
         </thead>
         <tbody>
           {products.map((product) => {
-            const totalValue = (product.currentStock * product.unitPrice).toFixed(2)
-            const isLowStock = product.currentStock <= product.minStock
-            
+            const currentStock = product.currentStock ?? '—'
+            const isLowStock = product.currentStock != null && product.currentStock <= product.minStock
+
             return (
               <tr
                 key={product.id}
                 className={`border-b border-slate-700 hover:bg-slate-800 transition ${
-                  isLowStock ? 'bg-red-900 bg-opacity-20' : ''
+                  isLowStock ? 'border-l-4 border-l-amber-500 bg-amber-900 bg-opacity-10' : ''
                 }`}
               >
                 <td className="px-6 py-4 text-sm text-slate-300">#{product.id}</td>
                 <td className="px-6 py-4 text-sm font-medium text-white">{product.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-300">{product.category}</td>
-                <td className="px-6 py-4 text-sm text-slate-300">{product.brand}</td>
+                <td className="px-6 py-4 text-sm text-slate-300">{product.category || '—'}</td>
+                <td className="px-6 py-4 text-sm text-slate-300">{product.brand || '—'}</td>
                 <td className="px-6 py-4 text-sm text-slate-300">
-                  {product.volumeMl ? `${product.volumeMl}ml` : 'N/A'}
+                  {product.volumeMl ? `${product.volumeMl} ml` : '—'}
                 </td>
                 <td className="px-6 py-4 text-sm text-center">
-                  <span className={isLowStock ? 'text-red-400 font-bold' : 'text-white'}>
-                    {product.currentStock}
+                  <span className={isLowStock ? 'text-amber-400 font-bold' : 'text-white'}>
+                    {currentStock}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-center text-slate-300">{product.minStock}</td>
                 <td className="px-6 py-4 text-sm text-right text-green-400 font-medium">
-                  ${product.unit}
+                  {product.sellingPrice}
                 </td>
-                <td className="px-6 py-4 text-sm text-right text-blue-400 font-medium">${totalValue}</td>
+                <td className="px-6 py-4 text-center">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    product.status === 'ACTIVE'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {product.status}
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-center">
                   <div className="flex gap-2 justify-center">
                     <button
                       onClick={() => onEdit(product)}
                       disabled={deletingId !== null}
                       className={`px-3 py-1 text-white text-xs rounded transition ${
-                        deletingId !== null 
-                          ? 'bg-blue-600 opacity-50 cursor-not-allowed' 
+                        deletingId !== null
+                          ? 'bg-blue-600 opacity-50 cursor-not-allowed'
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                     >

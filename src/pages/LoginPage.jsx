@@ -1,15 +1,12 @@
 import { useState } from 'react'
-import axios from 'axios'
+import apiClient from '../lib/apiClient'
 
 export default function LoginPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true)
-  const [username, setUsername] = useState('demo@example.com')
-  const [password, setPassword] = useState('password123')
-  const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -17,12 +14,9 @@ export default function LoginPage({ onLogin }) {
     setLoading(true)
 
     try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/register'
-      const data = { username, password }
-
-      const response = await axios.post(`${apiUrl}${endpoint}`, data)
-      console.log(response)
-      onLogin({}, response.data.accessToken)
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
+      const { data } = await apiClient.post(endpoint, { username, password })
+      onLogin(username, data.accessToken, data.refreshToken)
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred')
     } finally {
@@ -48,8 +42,8 @@ export default function LoginPage({ onLogin }) {
                 type="button"
                 onClick={() => setIsLogin(true)}
                 className={`flex-1 py-2 rounded-lg font-medium transition ${
-                  isLogin 
-                    ? 'bg-blue-600 text-white' 
+                  isLogin
+                    ? 'bg-blue-600 text-white'
                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
               >
@@ -59,8 +53,8 @@ export default function LoginPage({ onLogin }) {
                 type="button"
                 onClick={() => setIsLogin(false)}
                 className={`flex-1 py-2 rounded-lg font-medium transition ${
-                  !isLogin 
-                    ? 'bg-blue-600 text-white' 
+                  !isLogin
+                    ? 'bg-blue-600 text-white'
                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
               >
@@ -68,34 +62,17 @@ export default function LoginPage({ onLogin }) {
               </button>
             </div>
 
-            {/* Full Name - Register only */}
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  placeholder="Your full name"
-                  required={!isLogin}
-                />
-              </div>
-            )}
-
-            {/* Email/Username */}
+            {/* Username */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Email
+                Username
               </label>
               <input
-                type="email"
+                type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                placeholder="demo@example.com"
+                placeholder="Enter your username"
                 required
               />
             </div>
@@ -122,7 +99,7 @@ export default function LoginPage({ onLogin }) {
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -131,17 +108,6 @@ export default function LoginPage({ onLogin }) {
               {loading ? 'Loading...' : isLogin ? 'Login' : 'Register'}
             </button>
           </form>
-
-          {/* Demo Credentials */}
-          {isLogin && (
-            <div className="mt-6 pt-6 border-t border-slate-700">
-              <p className="text-xs text-slate-400 mb-3">Demo Credentials:</p>
-              <div className="bg-slate-700 rounded p-3 text-xs text-slate-300 space-y-1">
-                <p><span className="text-blue-400">Email:</span> demo@example.com</p>
-                <p><span className="text-blue-400">Password:</span> password123</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

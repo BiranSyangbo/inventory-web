@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.liquorshop</groupId>
-    <artifactId>inventory-api</artifactId>
+    <artifactId>inventory-web</artifactId>
     <version>v1.0.0</version>
-    <name>inventory-api</name>
+    <name>inventory-web</name>
 
 
     <properties>

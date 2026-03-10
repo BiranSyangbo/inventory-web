@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import apiClient from '../lib/apiClient'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage() {
+  const { login } = useAuth()
+  const navigate = useNavigate()
   const [isLogin, setIsLogin] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -12,13 +15,11 @@ export default function LoginPage({ onLogin }) {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
-      const { data } = await apiClient.post(endpoint, { username, password })
-      onLogin(username, data.accessToken, data.refreshToken)
+      await login(username, password)
+      navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred')
+      setError(err.response?.data?.message || 'Invalid credentials')
     } finally {
       setLoading(false)
     }
@@ -28,45 +29,31 @@ export default function LoginPage({ onLogin }) {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="bg-slate-800 rounded-lg shadow-xl p-8 border border-slate-700">
-          {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Stock Manager</h1>
             <p className="text-slate-400">Inventory Management System</p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Title Toggle */}
             <div className="flex gap-2 mb-6">
-              <button
-                type="button"
-                onClick={() => setIsLogin(true)}
-                className={`flex-1 py-2 rounded-lg font-medium transition ${
-                  isLogin
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                Login
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsLogin(false)}
-                className={`flex-1 py-2 rounded-lg font-medium transition ${
-                  !isLogin
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                Register
-              </button>
+              {['Login', 'Register'].map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setIsLogin(label === 'Login')}
+                  className={`flex-1 py-2 rounded-lg font-medium transition ${
+                    (isLogin ? 'Login' : 'Register') === label
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {/* Username */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Username
-              </label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Username</label>
               <input
                 type="text"
                 value={username}
@@ -74,14 +61,12 @@ export default function LoginPage({ onLogin }) {
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
                 placeholder="Enter your username"
                 required
+                autoFocus
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
               <input
                 type="password"
                 value={password}
@@ -92,14 +77,12 @@ export default function LoginPage({ onLogin }) {
               />
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="p-3 bg-red-900 border border-red-700 rounded-lg text-red-200 text-sm">
                 {error}
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}

@@ -1,67 +1,41 @@
-import { useState, useEffect, createContext } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import ProductsPage from './pages/ProductsPage'
-import apiClient from './lib/apiClient'
+import SuppliersPage from './pages/SuppliersPage'
+import CustomersPage from './pages/CustomersPage'
+import PurchasesPage from './pages/PurchasesPage'
+import SalesPage from './pages/SalesPage'
+import InventoryPage from './pages/InventoryPage'
+import ImportPage from './pages/ImportPage'
 import './App.css'
 
-export const AuthContext = createContext()
-
-function App() {
-  const [username, setUsername] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState('dashboard')
-
-  const token = localStorage.getItem('accessToken')
-
-  useEffect(() => {
-    if (token) {
-      apiClient.get('/api/auth/me')
-        .then(({ data }) => setUsername(data.username))
-        .catch(() => {
-          localStorage.clear()
-          setUsername(null)
-        })
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
-  }, [])
-
-  const handleLogin = (user, accessToken, refreshToken) => {
-    localStorage.setItem('accessToken', accessToken)
-    localStorage.setItem('refreshToken', refreshToken)
-    setUsername(user)
-    setCurrentPage('dashboard')
-  }
-
-  const handleLogout = async () => {
-    const refreshToken = localStorage.getItem('refreshToken')
-    try {
-      if (refreshToken) await apiClient.post('/api/auth/logout', { refreshToken })
-    } finally {
-      localStorage.clear()
-      setUsername(null)
-      setCurrentPage('dashboard')
-    }
-  }
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen bg-slate-900 text-slate-300">Loading...</div>
-  }
-
+export default function App() {
   return (
-    <AuthContext.Provider value={{ username, handleLogin, handleLogout }}>
-      {token && username ? (
-        <>
-          {currentPage === 'dashboard' && <DashboardPage onLogout={handleLogout} onNavigate={setCurrentPage} />}
-          {currentPage === 'products' && <ProductsPage onLogout={handleLogout} onNavigate={setCurrentPage} />}
-        </>
-      ) : (
-        <LoginPage onLogin={handleLogin} />
-      )}
-    </AuthContext.Provider>
+    <AuthProvider>
+      <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' } }} />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
+              <Route path="/customers" element={<CustomersPage />} />
+              <Route path="/purchases/*" element={<PurchasesPage />} />
+              <Route path="/sales/*" element={<SalesPage />} />
+              <Route path="/import" element={<ImportPage />} />
+            </Route>
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
-
-export default App

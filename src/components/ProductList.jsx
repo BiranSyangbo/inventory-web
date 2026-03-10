@@ -1,123 +1,53 @@
-import React from 'react'
+export default function ProductList({ products, loading, onEdit, onDelete, onToggleStatus }) {
+  if (loading) return (
+    <div className="flex items-center justify-center py-16">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
+    </div>
+  )
 
-export default function ProductList({ products, loading, onEdit, onDelete }) {
-  const [deletingId, setDeletingId] = React.useState(null)
-
-  const handleDelete = async (productId) => {
-    setDeletingId(productId)
-    try {
-      await onDelete(productId)
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-slate-300">Loading products...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-slate-400 text-lg">No products found</p>
-      </div>
-    )
-  }
+  if (!products.length) return (
+    <div className="text-center py-16 text-slate-400">No products found</div>
+  )
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+    <div className="overflow-x-auto rounded-xl border border-slate-700">
+      <table className="w-full text-sm">
         <thead>
-          <tr className="bg-slate-800 border-b border-slate-700">
-            <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">ID</th>
-            <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Name</th>
-            <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Category</th>
-            <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Brand</th>
-            <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Volume</th>
-            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Stock</th>
-            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Min Stock</th>
-            <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">Selling Price</th>
-            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Status</th>
-            <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Actions</th>
+          <tr className="bg-slate-800 border-b border-slate-700 text-slate-300 text-left">
+            {['#', 'Name', 'Category', 'Brand', 'Volume', 'Stock', 'Min', 'Selling Price', 'Status', 'Actions'].map(h => (
+              <th key={h} className="px-5 py-3 font-semibold whitespace-nowrap">{h}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => {
-            const currentStock = product.currentStock ?? '—'
-            const isLowStock = product.currentStock != null && product.currentStock <= product.minStock
-
+          {products.map(p => {
+            const isLow = p.currentStock != null && p.currentStock <= p.minStock
             return (
-              <tr
-                key={product.id}
-                className={`border-b border-slate-700 hover:bg-slate-800 transition ${
-                  isLowStock ? 'border-l-4 border-l-amber-500 bg-amber-900 bg-opacity-10' : ''
-                }`}
-              >
-                <td className="px-6 py-4 text-sm text-slate-300">#{product.id}</td>
-                <td className="px-6 py-4 text-sm font-medium text-white">{product.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-300">{product.category || '—'}</td>
-                <td className="px-6 py-4 text-sm text-slate-300">{product.brand || '—'}</td>
-                <td className="px-6 py-4 text-sm text-slate-300">
-                  {product.volumeMl ? `${product.volumeMl} ml` : '—'}
-                </td>
-                <td className="px-6 py-4 text-sm text-center">
-                  <span className={isLowStock ? 'text-amber-400 font-bold' : 'text-white'}>
-                    {currentStock}
+              <tr key={p.id} className={`border-b border-slate-700 hover:bg-slate-800 transition ${isLow ? 'border-l-4 border-l-amber-500' : ''}`}>
+                <td className="px-5 py-3 text-slate-400">#{p.id}</td>
+                <td className="px-5 py-3 font-medium text-white">{p.name}</td>
+                <td className="px-5 py-3 text-slate-300">{p.category || '—'}</td>
+                <td className="px-5 py-3 text-slate-300">{p.brand || '—'}</td>
+                <td className="px-5 py-3 text-slate-300">{p.volumeMl ? `${p.volumeMl} ml` : '—'}</td>
+                <td className="px-5 py-3 text-center">
+                  <span className={isLow ? 'text-amber-400 font-bold' : 'text-white'}>
+                    {p.currentStock ?? '—'}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-center text-slate-300">{product.minStock}</td>
-                <td className="px-6 py-4 text-sm text-right text-green-400 font-medium">
-                  {product.sellingPrice}
-                </td>
-                <td className="px-6 py-4 text-center">
+                <td className="px-5 py-3 text-center text-slate-300">{p.minStock}</td>
+                <td className="px-5 py-3 text-green-400 font-medium">{p.sellingPrice}</td>
+                <td className="px-5 py-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    product.status === 'ACTIVE'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {product.status}
-                  </span>
+                    p.status === 'ACTIVE' ? 'bg-green-900 text-green-300' : 'bg-slate-700 text-slate-400'
+                  }`}>{p.status}</span>
                 </td>
-                <td className="px-6 py-4 text-center">
-                  <div className="flex gap-2 justify-center">
-                    <button
-                      onClick={() => onEdit(product)}
-                      disabled={deletingId !== null}
-                      className={`px-3 py-1 text-white text-xs rounded transition ${
-                        deletingId !== null
-                          ? 'bg-blue-600 opacity-50 cursor-not-allowed'
-                          : 'bg-blue-600 hover:bg-blue-700'
-                      }`}
-                    >
-                      Edit
+                <td className="px-5 py-3">
+                  <div className="flex gap-2">
+                    <button onClick={() => onEdit(p)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition">Edit</button>
+                    <button onClick={() => onToggleStatus(p.id)} className="px-3 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition">
+                      {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                     </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      disabled={deletingId !== null}
-                      className={`px-3 py-1 text-white text-xs rounded transition flex items-center gap-1 ${
-                        deletingId === product.id
-                          ? 'bg-red-600 opacity-70 cursor-not-allowed'
-                          : deletingId !== null
-                          ? 'bg-red-600 opacity-50 cursor-not-allowed'
-                          : 'bg-red-600 hover:bg-red-700'
-                      }`}
-                    >
-                      {deletingId === product.id ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                          Deleting...
-                        </>
-                      ) : (
-                        'Delete'
-                      )}
-                    </button>
+                    <button onClick={() => onDelete(p.id)} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition">Delete</button>
                   </div>
                 </td>
               </tr>

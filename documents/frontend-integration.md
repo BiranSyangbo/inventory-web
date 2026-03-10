@@ -18,6 +18,7 @@
 11. [Business Logic Rules](#11-business-logic-rules)
 12. [UI Patterns & Tailwind Conventions](#12-ui-patterns--tailwind-conventions)
 13. [Screen Checklist](#13-screen-checklist)
+14. [Module: Bulk Import](#14-module-bulk-import)
 
 ---
 
@@ -1090,3 +1091,392 @@ const fmtDateTime = (iso: string) => format(parseISO(iso), "dd MMM yyyy, hh:mm a
 - [ ] Current stock table (sortable, low-stock highlighted)
 - [ ] Low stock alert list
 - [ ] Expiring batches list (days input, colour-coded by status)
+
+### Bulk Import (`/import`)
+- [ ] Import Products — CSV / Excel file upload
+- [ ] Import Customers — CSV / Excel file upload
+- [ ] Import Purchases — CSV / Excel file upload
+- [ ] Import Sales — CSV / Excel file upload
+- [ ] Per-import result panel: success count, failure count, error table (row + reason)
+
+---
+
+## 14. Module: Bulk Import
+
+Upload historical data via CSV (`.csv`) or Excel (`.xlsx`) files.
+All four endpoints accept `multipart/form-data` with a single field named `file`.
+
+---
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/import/products` | Import product master data |
+| `POST` | `/api/import/customers` | Import customer master data |
+| `POST` | `/api/import/purchases` | Import purchase history (creates batches, updates avg cost) |
+| `POST` | `/api/import/sales` | Import sales history (FIFO batch allocation, stock deducted) |
+
+---
+
+### Response Shape — `ImportResult`
+
+Every endpoint returns the same structure:
+
+```ts
+interface ImportRowError {
+  row: number;     // 1-based row number in the file (row 2 = first data row)
+  message: string; // reason the row was rejected
+}
+
+interface ImportResult {
+  totalRows:    number;          // data rows parsed (excluding header)
+  successCount: number;          // rows/groups successfully saved
+  failureCount: number;          // rows/groups that failed
+  errors:       ImportRowError[]; // per-row error detail
+}
+```
+
+The backend processes rows **one by one**. A failed row does **not** abort the rest of the import.
+
+---
+
+### API Service — `src/services/importService.ts`
+
+```ts
+import apiClient from "@/lib/apiClient";
+
+export interface ImportRowError {
+  row: number;
+  message: string;
+}
+
+export interface ImportResult {
+  totalRows: number;
+  successCount: number;
+  failureCount: number;
+  errors: ImportRowError[];
+}
+
+type ImportEntity = "products" | "customers" | "purchases" | "sales";
+
+const importService = {
+  upload: (entity: ImportEntity, file: File): Promise<ImportResult> => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiClient
+      .post<ImportResult>(`/api/import/${entity}`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then((r) => r.data);
+  },
+};
+
+export default importService;
+```
+
+---
+
+### Expected CSV / Excel Column Layouts
+
+Row 1 must be a header row (values are ignored — columns are **positional**).
+
+#### Products
+
+| Col | Field | Required | Notes |
+|-----|-------|----------|-------|
+| 1 | `name` | Yes | Product name |
+| 2 | `brand` | No | Brand name |
+| 3 | `category` | No | e.g. Whiskey, Beer |
+| 4 | `volume_ml` | No | 180 / 375 / 750 / 1000 |
+| 5 | `unit` | No | e.g. Bottle |
+| 6 | `barcode` | No | Must be unique if provided |
+| 7 | `min_stock` | No | Default 0 |
+| 8 | `selling_price` | Yes | Decimal, e.g. `520.00` |
+| 9 | `status` | No | `ACTIVE` or `INACTIVE` (default `ACTIVE`) |
+
+**Example:**
+```
+name,brand,category,volume_ml,unit,barcode,min_stock,selling_price,status
+Royal Stag,Seagram,Whiskey,750,Bottle,RS-750,5,520.00,ACTIVE
+McDowell's No.1,McDowell,Whiskey,750,Bottle,MC-750,5,480.00,ACTIVE
+Kingfisher,United Breweries,Beer,650,Bottle,KF-650,10,120.00,ACTIVE
+```
+
+---
+
+#### Customers
+
+| Col | Field | Required | Notes |
+|-----|-------|----------|-------|
+| 1 | `name` | Yes | Must be unique (used as lookup key) |
+| 2 | `phone` | No | |
+| 3 | `address` | No | |
+| 4 | `credit_limit` | No | Default 0 (walk-in / cash only) |
+
+**Example:**
+```
+name,phone,address,credit_limit
+Singh Wines,9841000001,Kathmandu,50000
+Ram Bar,9841000002,Patan,25000
+Walk-in Customer,,,0
+```
+
+---
+
+#### Purchases
+
+Each **row** is one purchase line item. Rows sharing the same `vat_bill_number` are grouped into a single purchase invoice. If `vat_bill_number` is blank, each row becomes its own single-line purchase.
+
+> **Prerequisite:** The supplier (`supplier_name`) must already exist in the database. Create suppliers manually or import customers first.
+
+| Col | Field | Required | Notes |
+|-----|-------|----------|-------|
+| 1 | `supplier_name` | Yes | Case-insensitive match against supplier master |
+| 2 | `vat_bill_number` | No | Rows with the same value = one invoice |
+| 3 | `purchase_date` | No | `YYYY-MM-DD`, `DD/MM/YYYY`, or `MM/DD/YYYY` |
+| 4 | `invoice_amount` | No | Total invoice amount |
+| 5 | `vat_amount` | No | Default 0 |
+| 6 | `discount` | No | Default 0 |
+| 7 | `remarks` | No | |
+| 8 | `product_barcode` | Yes | Must match an existing active product |
+| 9 | `quantity` | Yes | Integer ≥ 1 |
+| 10 | `purchase_price` | Yes | Price per unit |
+| 11 | `vat_percent` | No | Default 0 |
+| 12 | `expiry_date` | No | Same date formats as `purchase_date` |
+
+**Example** (2 invoices — first with 2 line items, second with 1):
+```
+supplier_name,vat_bill_number,purchase_date,invoice_amount,vat_amount,discount,remarks,product_barcode,quantity,purchase_price,vat_percent,expiry_date
+ABC Distributors,BILL-001,2026-01-15,5000.00,500.00,0,,RS-750,10,450.00,13,
+ABC Distributors,BILL-001,2026-01-15,5000.00,500.00,0,,MC-750,5,400.00,13,
+Pashupati Agency,BILL-002,2026-01-16,1200.00,0,0,,KF-650,20,95.00,0,2026-12-31
+```
+
+---
+
+#### Sales
+
+Each **row** is one sale line item. Rows sharing the same `invoice_number` are grouped into one sale. If `invoice_number` is blank, each row is its own single-line sale and the backend auto-generates the invoice number.
+
+> **Prerequisite:** Products must exist (by barcode). Customers must exist if `customer_name` is set.
+
+| Col | Field | Required | Notes |
+|-----|-------|----------|-------|
+| 1 | `invoice_number` | No | Groups rows into one sale; preserved as-is in DB |
+| 2 | `sale_date` | No | `YYYY-MM-DD` or `YYYY-MM-DD HH:mm:ss` |
+| 3 | `customer_name` | No | Blank = walk-in sale |
+| 4 | `payment_status` | No | `PAID` / `PARTIAL` / `CREDIT` (default `PAID`) |
+| 5 | `discount` | No | Default 0 |
+| 6 | `vat_amount` | No | Default 0 |
+| 7 | `notes` | No | |
+| 8 | `product_barcode` | Yes | Must match an existing active product |
+| 9 | `quantity` | Yes | Integer ≥ 1 |
+| 10 | `unit_price` | No | Leave blank to use customer template / product price |
+
+**Example** (one sale with 2 items, one walk-in single-item sale):
+```
+invoice_number,sale_date,customer_name,payment_status,discount,vat_amount,notes,product_barcode,quantity,unit_price
+INV-2026-00001,2026-01-20,Singh Wines,CREDIT,0,0,,RS-750,5,520.00
+INV-2026-00001,2026-01-20,Singh Wines,CREDIT,0,0,,MC-750,2,480.00
+,2026-01-21,,PAID,0,0,,KF-650,4,
+```
+
+---
+
+### Import Page Component — `src/pages/ImportPage.tsx`
+
+```tsx
+import { useState } from "react";
+import importService, { ImportResult } from "@/services/importService";
+import toast from "react-hot-toast";
+
+type Entity = "products" | "customers" | "purchases" | "sales";
+
+const ENTITIES: { key: Entity; label: string; description: string }[] = [
+  { key: "products",  label: "Products",  description: "name, brand, category, volume_ml, unit, barcode, min_stock, selling_price, status" },
+  { key: "customers", label: "Customers", description: "name, phone, address, credit_limit" },
+  { key: "purchases", label: "Purchases", description: "supplier_name, vat_bill_number, purchase_date, invoice_amount, vat_amount, discount, remarks, product_barcode, quantity, purchase_price, vat_percent, expiry_date" },
+  { key: "sales",     label: "Sales",     description: "invoice_number, sale_date, customer_name, payment_status, discount, vat_amount, notes, product_barcode, quantity, unit_price" },
+];
+
+export default function ImportPage() {
+  const [entity, setEntity]   = useState<Entity>("products");
+  const [file, setFile]       = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult]   = useState<ImportResult | null>(null);
+
+  const selected = ENTITIES.find((e) => e.key === entity)!;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await importService.upload(entity, file);
+      setResult(res);
+      if (res.failureCount === 0) {
+        toast.success(`Imported ${res.successCount} ${entity} successfully.`);
+      } else {
+        toast.error(`${res.failureCount} row(s) failed. Check the error table below.`);
+      }
+    } catch {
+      toast.error("Upload failed. Check the file format and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-gray-800">Bulk Import</h1>
+
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
+        {/* Entity selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Import Type</label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {ENTITIES.map((ent) => (
+              <button
+                key={ent.key}
+                type="button"
+                onClick={() => { setEntity(ent.key); setFile(null); setResult(null); }}
+                className={`py-2 px-3 rounded-lg border text-sm font-medium transition ${
+                  entity === ent.key
+                    ? "bg-blue-700 text-white border-blue-700"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+                }`}
+              >
+                {ent.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Column hint */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600 font-mono break-all">
+          <span className="font-semibold text-gray-700">Expected columns: </span>
+          {selected.description}
+        </div>
+
+        {/* File input */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            File <span className="text-gray-400 font-normal">(.csv or .xlsx — first row must be header)</span>
+          </label>
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); }}
+            className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium hover:file:bg-blue-100 transition"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={!file || loading}
+          className="w-full bg-blue-700 text-white py-2 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition font-medium"
+        >
+          {loading ? "Uploading…" : `Import ${selected.label}`}
+        </button>
+      </form>
+
+      {/* Result panel */}
+      {result && <ImportResultPanel result={result} entity={selected.label} />}
+    </div>
+  );
+}
+
+function ImportResultPanel({ result, entity }: { result: ImportResult; entity: string }) {
+  const allOk = result.failureCount === 0;
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-gray-800">{entity} Import Result</h2>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-3 text-center">
+        <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+          <p className="text-2xl font-bold text-gray-800">{result.totalRows}</p>
+          <p className="text-xs text-gray-500 mt-0.5">Total Rows</p>
+        </div>
+        <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+          <p className="text-2xl font-bold text-green-700">{result.successCount}</p>
+          <p className="text-xs text-green-600 mt-0.5">Succeeded</p>
+        </div>
+        <div className={`rounded-lg p-3 border ${result.failureCount > 0 ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"}`}>
+          <p className={`text-2xl font-bold ${result.failureCount > 0 ? "text-red-600" : "text-gray-400"}`}>{result.failureCount}</p>
+          <p className={`text-xs mt-0.5 ${result.failureCount > 0 ? "text-red-500" : "text-gray-400"}`}>Failed</p>
+        </div>
+      </div>
+
+      {allOk && (
+        <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+          All rows imported successfully.
+        </p>
+      )}
+
+      {/* Error table */}
+      {result.errors.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Row Errors</h3>
+          <div className="overflow-x-auto rounded-lg border border-red-200">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-red-50 text-red-700">
+                <tr>
+                  <th className="px-3 py-2 font-semibold w-20">Row</th>
+                  <th className="px-3 py-2 font-semibold">Error</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-red-100">
+                {result.errors.map((err, i) => (
+                  <tr key={i} className="bg-white">
+                    <td className="px-3 py-2 text-gray-500 font-mono">{err.row}</td>
+                    <td className="px-3 py-2 text-red-600">{err.message}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+### Routing
+
+Add the import page to `App.tsx`:
+
+```tsx
+import ImportPage from "@/pages/ImportPage";
+
+// Inside <Route element={<Layout />}>:
+<Route path="/import" element={<ImportPage />} />
+```
+
+Add to the sidebar nav items:
+
+```ts
+import { Upload } from "lucide-react";
+
+{ label: "Import", path: "/import", icon: Upload },
+```
+
+---
+
+### Key UI Notes
+
+- **Order matters for purchases/sales**: create suppliers and products first before importing purchases; create customers before importing sales with `customer_name`.
+- **Partial success is normal**: the backend skips bad rows and processes the rest. Always review the error table after import.
+- **Duplicate VAT bill numbers**: if a purchase's `vat_bill_number` already exists in the DB, that entire purchase group is skipped with a clear error.
+- **Stock side-effects are immediate**: imported purchases increase stock and recalculate weighted average cost; imported sales run FIFO batch allocation and decrease stock — exactly the same as manual entry.
+- **Invoice number preservation**: sales imported with an `invoice_number` in the CSV keep that number in the database. Leave the column blank to let the backend auto-generate `INV-YYYY-NNNNN`.
+- **File tips**:
+  - Always include the header row even if you do not use the column names.
+  - Dates: `YYYY-MM-DD` is the safest format. `DD/MM/YYYY` and `MM/DD/YYYY` are also accepted.
+  - Decimal numbers: use `.` as the decimal separator (e.g. `520.00`).
+  - Empty optional cells: leave blank — do not write `null` or `N/A`.

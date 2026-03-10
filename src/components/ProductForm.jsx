@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const CATEGORIES = ['Whiskey', 'Vodka', 'Beer', 'Wine', 'Rum', 'Gin', 'Brandy', 'Other']
+const CATEGORIES = ['Whiskey', 'Vodka', 'Beer', 'Wine', 'Rum', 'Gin', 'Brandy','Cigarette', 'Other']
 const VOLUMES = [180, 375, 750, 1000]
 
 export default function ProductForm({ product, onSave, onCancel, isLoading = false }) {

@@ -123,62 +123,62 @@ let failedQueue: Array<{ resolve: Function; reject: Function }> = [];
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) =>
-    error ? reject(error) : resolve(token)
+          error ? reject(error) : resolve(token)
   );
   failedQueue = [];
 };
 
 apiClient.interceptors.response.use(
-  (res) => res,
-  async (error) => {
-    const original = error.config;
+        (res) => res,
+        async (error) => {
+          const original = error.config;
 
-    if (error.response?.status === 401 && !original._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          original.headers.Authorization = `Bearer ${token}`;
-          return apiClient(original);
-        });
-      }
+          if (error.response?.status === 401 && !original._retry) {
+            if (isRefreshing) {
+              return new Promise((resolve, reject) => {
+                failedQueue.push({ resolve, reject });
+              }).then((token) => {
+                original.headers.Authorization = `Bearer ${token}`;
+                return apiClient(original);
+              });
+            }
 
-      original._retry = true;
-      isRefreshing = true;
+            original._retry = true;
+            isRefreshing = true;
 
-      const refreshToken = localStorage.getItem("refreshToken");
-      if (!refreshToken) {
-        window.location.href = "/login";
-        return Promise.reject(error);
-      }
+            const refreshToken = localStorage.getItem("refreshToken");
+            if (!refreshToken) {
+              window.location.href = "/login";
+              return Promise.reject(error);
+            }
 
-      try {
-        const { data } = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
-          { refreshToken }
-        );
-        localStorage.setItem("accessToken", data.accessToken);
-        localStorage.setItem("refreshToken", data.refreshToken);
-        apiClient.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
-        processQueue(null, data.accessToken);
-        original.headers.Authorization = `Bearer ${data.accessToken}`;
-        return apiClient(original);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        localStorage.clear();
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
+            try {
+              const { data } = await axios.post(
+                      `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
+                      { refreshToken }
+              );
+              localStorage.setItem("accessToken", data.accessToken);
+              localStorage.setItem("refreshToken", data.refreshToken);
+              apiClient.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
+              processQueue(null, data.accessToken);
+              original.headers.Authorization = `Bearer ${data.accessToken}`;
+              return apiClient(original);
+            } catch (refreshError) {
+              processQueue(refreshError, null);
+              localStorage.clear();
+              window.location.href = "/login";
+              return Promise.reject(refreshError);
+            } finally {
+              isRefreshing = false;
+            }
+          }
 
-    // Show toast for common errors
-    const message = error.response?.data?.error || error.response?.data?.message || "Something went wrong";
-    if (error.response?.status !== 401) toast.error(message);
+          // Show toast for common errors
+          const message = error.response?.data?.error || error.response?.data?.message || "Something went wrong";
+          if (error.response?.status !== 401) toast.error(message);
 
-    return Promise.reject(error);
-  }
+          return Promise.reject(error);
+        }
 );
 
 export default apiClient;
@@ -274,15 +274,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem("accessToken");
     if (token && !username) {
       apiClient.get("/api/auth/me")
-        .then(({ data }) => setUsername(data.username))
-        .catch(() => localStorage.clear());
+              .then(({ data }) => setUsername(data.username))
+              .catch(() => localStorage.clear());
     }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ username, isAuthenticated, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+          <AuthContext.Provider value={{ username, isAuthenticated, login, logout }}>
+            {children}
+          </AuthContext.Provider>
   );
 }
 
@@ -315,37 +315,37 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="bg-white shadow-md rounded-xl p-8 w-full max-w-sm space-y-4"
-      >
-        <h1 className="text-2xl font-bold text-gray-800">Inventory Login</h1>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-          <input
-            {...register("username", { required: "Required" })}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-          <input
-            type="password"
-            {...register("password", { required: "Required" })}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-blue-700 text-white py-2 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition"
-        >
-          {isSubmitting ? "Logging in..." : "Login"}
-        </button>
-      </form>
-    </div>
+          <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <form
+                    onSubmit={handleSubmit(onSubmit)}
+                    className="bg-white shadow-md rounded-xl p-8 w-full max-w-sm space-y-4"
+            >
+              <h1 className="text-2xl font-bold text-gray-800">Inventory Login</h1>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input
+                        {...register("username", { required: "Required" })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input
+                        type="password"
+                        {...register("password", { required: "Required" })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-blue-700 text-white py-2 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition"
+              >
+                {isSubmitting ? "Logging in..." : "Login"}
+              </button>
+            </form>
+          </div>
   );
 }
 ```
@@ -373,26 +373,26 @@ import InventoryPage from "@/pages/InventoryPage";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Toaster position="top-right" />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/suppliers/*" element={<SuppliersPage />} />
-              <Route path="/products/*" element={<ProductsPage />} />
-              <Route path="/customers/*" element={<CustomersPage />} />
-              <Route path="/purchases/*" element={<PurchasesPage />} />
-              <Route path="/sales/*" element={<SalesPage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
-            </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          <AuthProvider>
+            <Toaster position="top-right" />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<Layout />}>
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/suppliers/*" element={<SuppliersPage />} />
+                    <Route path="/products/*" element={<ProductsPage />} />
+                    <Route path="/customers/*" element={<CustomersPage />} />
+                    <Route path="/purchases/*" element={<PurchasesPage />} />
+                    <Route path="/sales/*" element={<SalesPage />} />
+                    <Route path="/inventory" element={<InventoryPage />} />
+                  </Route>
+                </Route>
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </AuthProvider>
   );
 }
 ```
@@ -468,6 +468,9 @@ export interface ProductRequest {
   brand?: string;
   category?: string;               // Whiskey | Vodka | Beer | Wine | Rum | etc.
   volumeMl?: number;               // 180 | 375 | 750 | 1000
+  type?: string;                   // e.g. "Full" | "Half" | "Quarter"
+  alcoholPercentage?: number;      // e.g. 40.0
+  mrp?: number;                    // Maximum Retail Price (integer)
   unit?: string;
   barcode?: string;
   minStock?: number;               // default 0
@@ -481,6 +484,9 @@ export interface ProductResponse {
   brand: string | null;
   category: string | null;
   volumeMl: number | null;
+  type: string | null;             // e.g. "Full", "Half", "Quarter"
+  alcoholPercentage: string | null; // BigDecimal serialized as string
+  mrp: number | null;              // Maximum Retail Price
   unit: string | null;
   barcode: string | null;
   minStock: number;
@@ -488,7 +494,7 @@ export interface ProductResponse {
   averageCost: string;    // weighted average cost
   status: "ACTIVE" | "INACTIVE";
   createdAt: string;
-  currentStock: number | null; // populated by InventoryService
+  currentStock: number;   // live stock count maintained on the product record
 }
 
 export const productService = {
@@ -508,6 +514,9 @@ export const productService = {
 - Product search/filter by barcode: filter client-side on `barcode` field or implement server-side if list is large.
 - **Low stock indicator**: compare `currentStock` vs `minStock`. If `currentStock <= minStock`, highlight row with `bg-amber-50 border-l-4 border-amber-500`.
 - `averageCost` is read-only — never editable. It is recalculated automatically on each purchase.
+- `mrp` is optional. Show it as "MRP" label if present; otherwise omit the field.
+- `type` is optional free text (e.g. Full / Half / Quarter). Suggest these as a dropdown but allow free entry.
+- `alcoholPercentage` is optional. Display as `"40.0%"` format if present.
 - Category dropdown options: `["Whiskey", "Vodka", "Beer", "Wine", "Rum", "Gin", "Brandy", "Other"]`
 - Volume dropdown: `[180, 375, 750, 1000]` (ml)
 
@@ -1189,18 +1198,21 @@ Row 1 must be a header row (values are ignored — columns are **positional**).
 | 2 | `brand` | No | Brand name |
 | 3 | `category` | No | e.g. Whiskey, Beer |
 | 4 | `volume_ml` | No | 180 / 375 / 750 / 1000 |
-| 5 | `unit` | No | e.g. Bottle |
-| 6 | `barcode` | No | Must be unique if provided |
-| 7 | `min_stock` | No | Default 0 |
-| 8 | `selling_price` | Yes | Decimal, e.g. `520.00` |
-| 9 | `status` | No | `ACTIVE` or `INACTIVE` (default `ACTIVE`) |
+| 5 | `type` | No | e.g. Full, Half, Quarter |
+| 6 | `alcohol_percentage` | No | e.g. `40.00` |
+| 7 | `mrp` | No | Maximum Retail Price (integer) |
+| 8 | `unit` | No | e.g. Bottle |
+| 9 | `barcode` | No | Must be unique if provided |
+| 10 | `min_stock` | No | Default 0 |
+| 11 | `selling_price` | Yes | Decimal, e.g. `520.00` |
+| 12 | `status` | No | `ACTIVE` or `INACTIVE` (default `ACTIVE`) |
 
 **Example:**
 ```
-name,brand,category,volume_ml,unit,barcode,min_stock,selling_price,status
-Royal Stag,Seagram,Whiskey,750,Bottle,RS-750,5,520.00,ACTIVE
-McDowell's No.1,McDowell,Whiskey,750,Bottle,MC-750,5,480.00,ACTIVE
-Kingfisher,United Breweries,Beer,650,Bottle,KF-650,10,120.00,ACTIVE
+name,brand,category,volume_ml,type,alcohol_percentage,mrp,unit,barcode,min_stock,selling_price,status
+Royal Stag,Seagram,Whiskey,750,Full,42.8,550,Bottle,RS-750,5,520.00,ACTIVE
+McDowell's No.1,McDowell,Whiskey,750,Full,42.8,500,Bottle,MC-750,5,480.00,ACTIVE
+Kingfisher,United Breweries,Beer,650,,4.8,,Bottle,KF-650,10,120.00,ACTIVE
 ```
 
 ---
@@ -1294,7 +1306,7 @@ import toast from "react-hot-toast";
 type Entity = "products" | "customers" | "purchases" | "sales";
 
 const ENTITIES: { key: Entity; label: string; description: string }[] = [
-  { key: "products",  label: "Products",  description: "name, brand, category, volume_ml, unit, barcode, min_stock, selling_price, status" },
+  { key: "products",  label: "Products",  description: "name, brand, category, volume_ml, type, alcohol_percentage, mrp, min_stock, selling_price, status" },
   { key: "customers", label: "Customers", description: "name, phone, address, credit_limit" },
   { key: "purchases", label: "Purchases", description: "supplier_name, vat_bill_number, purchase_date, invoice_amount, vat_amount, discount, remarks, product_barcode, quantity, purchase_price, vat_percent, expiry_date" },
   { key: "sales",     label: "Sales",     description: "invoice_number, sale_date, customer_name, payment_status, discount, vat_amount, notes, product_barcode, quantity, unit_price" },
@@ -1329,118 +1341,118 @@ export default function ImportPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Bulk Import</h1>
+          <div className="max-w-3xl mx-auto space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800">Bulk Import</h1>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
-        {/* Entity selector */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Import Type</label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {ENTITIES.map((ent) => (
+            <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
+              {/* Entity selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Import Type</label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {ENTITIES.map((ent) => (
+                          <button
+                                  key={ent.key}
+                                  type="button"
+                                  onClick={() => { setEntity(ent.key); setFile(null); setResult(null); }}
+                                  className={`py-2 px-3 rounded-lg border text-sm font-medium transition ${
+                                          entity === ent.key
+                                                  ? "bg-blue-700 text-white border-blue-700"
+                                                  : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+                                  }`}
+                          >
+                            {ent.label}
+                          </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Column hint */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600 font-mono break-all">
+                <span className="font-semibold text-gray-700">Expected columns: </span>
+                {selected.description}
+              </div>
+
+              {/* File input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  File <span className="text-gray-400 font-normal">(.csv or .xlsx — first row must be header)</span>
+                </label>
+                <input
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); }}
+                        className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium hover:file:bg-blue-100 transition"
+                />
+              </div>
+
               <button
-                key={ent.key}
-                type="button"
-                onClick={() => { setEntity(ent.key); setFile(null); setResult(null); }}
-                className={`py-2 px-3 rounded-lg border text-sm font-medium transition ${
-                  entity === ent.key
-                    ? "bg-blue-700 text-white border-blue-700"
-                    : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
-                }`}
+                      type="submit"
+                      disabled={!file || loading}
+                      className="w-full bg-blue-700 text-white py-2 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition font-medium"
               >
-                {ent.label}
+                {loading ? "Uploading…" : `Import ${selected.label}`}
               </button>
-            ))}
+            </form>
+
+            {/* Result panel */}
+            {result && <ImportResultPanel result={result} entity={selected.label} />}
           </div>
-        </div>
-
-        {/* Column hint */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600 font-mono break-all">
-          <span className="font-semibold text-gray-700">Expected columns: </span>
-          {selected.description}
-        </div>
-
-        {/* File input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            File <span className="text-gray-400 font-normal">(.csv or .xlsx — first row must be header)</span>
-          </label>
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); }}
-            className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium hover:file:bg-blue-100 transition"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={!file || loading}
-          className="w-full bg-blue-700 text-white py-2 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition font-medium"
-        >
-          {loading ? "Uploading…" : `Import ${selected.label}`}
-        </button>
-      </form>
-
-      {/* Result panel */}
-      {result && <ImportResultPanel result={result} entity={selected.label} />}
-    </div>
   );
 }
 
 function ImportResultPanel({ result, entity }: { result: ImportResult; entity: string }) {
   const allOk = result.failureCount === 0;
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-      <h2 className="text-lg font-semibold text-gray-800">{entity} Import Result</h2>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-800">{entity} Import Result</h2>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3 text-center">
-        <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-          <p className="text-2xl font-bold text-gray-800">{result.totalRows}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Total Rows</p>
-        </div>
-        <div className="rounded-lg bg-green-50 border border-green-200 p-3">
-          <p className="text-2xl font-bold text-green-700">{result.successCount}</p>
-          <p className="text-xs text-green-600 mt-0.5">Succeeded</p>
-        </div>
-        <div className={`rounded-lg p-3 border ${result.failureCount > 0 ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"}`}>
-          <p className={`text-2xl font-bold ${result.failureCount > 0 ? "text-red-600" : "text-gray-400"}`}>{result.failureCount}</p>
-          <p className={`text-xs mt-0.5 ${result.failureCount > 0 ? "text-red-500" : "text-gray-400"}`}>Failed</p>
-        </div>
-      </div>
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                <p className="text-2xl font-bold text-gray-800">{result.totalRows}</p>
+                <p className="text-xs text-gray-500 mt-0.5">Total Rows</p>
+              </div>
+              <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+                <p className="text-2xl font-bold text-green-700">{result.successCount}</p>
+                <p className="text-xs text-green-600 mt-0.5">Succeeded</p>
+              </div>
+              <div className={`rounded-lg p-3 border ${result.failureCount > 0 ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"}`}>
+                <p className={`text-2xl font-bold ${result.failureCount > 0 ? "text-red-600" : "text-gray-400"}`}>{result.failureCount}</p>
+                <p className={`text-xs mt-0.5 ${result.failureCount > 0 ? "text-red-500" : "text-gray-400"}`}>Failed</p>
+              </div>
+            </div>
 
-      {allOk && (
-        <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-          All rows imported successfully.
-        </p>
-      )}
+            {allOk && (
+                    <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                      All rows imported successfully.
+                    </p>
+            )}
 
-      {/* Error table */}
-      {result.errors.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Row Errors</h3>
-          <div className="overflow-x-auto rounded-lg border border-red-200">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-red-50 text-red-700">
-                <tr>
-                  <th className="px-3 py-2 font-semibold w-20">Row</th>
-                  <th className="px-3 py-2 font-semibold">Error</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-red-100">
-                {result.errors.map((err, i) => (
-                  <tr key={i} className="bg-white">
-                    <td className="px-3 py-2 text-gray-500 font-mono">{err.row}</td>
-                    <td className="px-3 py-2 text-red-600">{err.message}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Error table */}
+            {result.errors.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Row Errors</h3>
+                      <div className="overflow-x-auto rounded-lg border border-red-200">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-red-50 text-red-700">
+                          <tr>
+                            <th className="px-3 py-2 font-semibold w-20">Row</th>
+                            <th className="px-3 py-2 font-semibold">Error</th>
+                          </tr>
+                          </thead>
+                          <tbody className="divide-y divide-red-100">
+                          {result.errors.map((err, i) => (
+                                  <tr key={i} className="bg-white">
+                                    <td className="px-3 py-2 text-gray-500 font-mono">{err.row}</td>
+                                    <td className="px-3 py-2 text-red-600">{err.message}</td>
+                                  </tr>
+                          ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+            )}
           </div>
-        </div>
-      )}
-    </div>
   );
 }
 ```

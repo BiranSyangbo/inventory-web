@@ -1,4 +1,4 @@
-export default function ProductList({ products, loading, onEdit, onDelete, onToggleStatus }) {
+export default function ProductList({ products, loading, onEdit, onDelete, onToggleStatus, onView }) {
   if (loading) return (
     <div className="flex items-center justify-center py-16">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
@@ -14,7 +14,7 @@ export default function ProductList({ products, loading, onEdit, onDelete, onTog
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-800 border-b border-slate-700 text-slate-300 text-left">
-            {['#', 'Name', 'Category', 'Brand', 'Volume', 'Stock', 'Min', 'Selling Price', 'Status', 'Actions'].map(h => (
+            {['#', 'Name', 'Category', 'Brand', 'Volume', 'Type', 'Alc %', 'MRP', 'Stock', 'Min', 'Selling Price', 'Status', 'Actions'].map(h => (
               <th key={h} className="px-5 py-3 font-semibold whitespace-nowrap">{h}</th>
             ))}
           </tr>
@@ -29,6 +29,9 @@ export default function ProductList({ products, loading, onEdit, onDelete, onTog
                 <td className="px-5 py-3 text-slate-300">{p.category || '—'}</td>
                 <td className="px-5 py-3 text-slate-300">{p.brand || '—'}</td>
                 <td className="px-5 py-3 text-slate-300">{p.volumeMl ? `${p.volumeMl} ml` : '—'}</td>
+                <td className="px-5 py-3 text-slate-300">{p.type || '—'}</td>
+                <td className="px-5 py-3 text-slate-300">{p.alcoholPercentage ? `${p.alcoholPercentage}%` : '—'}</td>
+                <td className="px-5 py-3 text-slate-300">{p.mrp ?? '—'}</td>
                 <td className="px-5 py-3 text-center">
                   <span className={isLow ? 'text-amber-400 font-bold' : 'text-white'}>
                     {p.currentStock ?? '—'}
@@ -43,6 +46,7 @@ export default function ProductList({ products, loading, onEdit, onDelete, onTog
                 </td>
                 <td className="px-5 py-3">
                   <div className="flex gap-2">
+                    <button onClick={() => onView(p)} className="px-3 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition">View</button>
                     <button onClick={() => onEdit(p)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition">Edit</button>
                     <button onClick={() => onToggleStatus(p.id)} className="px-3 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded transition">
                       {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}

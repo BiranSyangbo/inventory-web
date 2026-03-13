@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 
 const CATEGORIES = ['Whiskey', 'Vodka', 'Beer', 'Wine', 'Rum', 'Gin', 'Brandy','Cigarette', 'Other']
 const VOLUMES = [180, 375, 750, 1000]
+const TYPES = ['Full', 'Half', 'Quarter']
 
 export default function ProductForm({ product, onSave, onCancel, isLoading = false }) {
   const [formData, setFormData] = useState({
@@ -9,6 +10,9 @@ export default function ProductForm({ product, onSave, onCancel, isLoading = fal
     category: '',
     brand: '',
     volumeMl: '',
+    type: '',
+    alcoholPercentage: '',
+    mrp: '',
     unit: '',
     barcode: '',
     minStock: '0',
@@ -24,6 +28,9 @@ export default function ProductForm({ product, onSave, onCancel, isLoading = fal
         category: product.category || '',
         brand: product.brand || '',
         volumeMl: product.volumeMl?.toString() || '',
+        type: product.type || '',
+        alcoholPercentage: product.alcoholPercentage?.toString() || '',
+        mrp: product.mrp?.toString() || '',
         unit: product.unit || '',
         barcode: product.barcode || '',
         minStock: product.minStock?.toString() || '0',
@@ -47,6 +54,14 @@ export default function ProductForm({ product, onSave, onCancel, isLoading = fal
 
     if (formData.volumeMl && isNaN(parseInt(formData.volumeMl))) newErrors.volumeMl = 'Volume must be a number'
 
+    if (formData.mrp && (isNaN(parseInt(formData.mrp)) || parseInt(formData.mrp) < 0)) newErrors.mrp = 'MRP must be a positive number'
+
+    if (formData.alcoholPercentage) {
+      const alc = parseFloat(formData.alcoholPercentage)
+      if (isNaN(alc) || alc < 0 || alc > 100) newErrors.alcoholPercentage = 'Alcohol % must be between 0 and 100'
+    }
+
+    if (!formData.barcode.trim()) newErrors.barcode = 'Product code is required'
     const price = parseFloat(formData.sellingPrice)
     if (isNaN(price) || price <= 0) newErrors.sellingPrice = 'Selling price must be greater than 0'
 
@@ -63,6 +78,9 @@ export default function ProductForm({ product, onSave, onCancel, isLoading = fal
       category: formData.category || undefined,
       brand: formData.brand || undefined,
       volumeMl: formData.volumeMl ? parseInt(formData.volumeMl) : undefined,
+      type: formData.type || undefined,
+      alcoholPercentage: formData.alcoholPercentage ? parseFloat(formData.alcoholPercentage) : undefined,
+      mrp: formData.mrp ? parseInt(formData.mrp) : undefined,
       unit: formData.unit || undefined,
       barcode: formData.barcode || undefined,
       minStock: parseInt(formData.minStock),
@@ -151,17 +169,52 @@ export default function ProductForm({ product, onSave, onCancel, isLoading = fal
             </div>
           </div>
 
+          {/* Type and Alcohol Percentage */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Type</label>
+              <input
+                type="text"
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                list="type-suggestions"
+                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400"
+                placeholder="e.g., Full, Half, Quarter"
+              />
+              <datalist id="type-suggestions">
+                {TYPES.map(t => <option key={t} value={t} />)}
+              </datalist>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Alcohol %</label>
+              <input
+                type="number"
+                name="alcoholPercentage"
+                step="0.1"
+                min="0"
+                max="100"
+                value={formData.alcoholPercentage}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 ${errors.alcoholPercentage ? 'border-red-500' : 'border-slate-600'}`}
+                placeholder="e.g., 42.8"
+              />
+              {errors.alcoholPercentage && <p className="text-red-400 text-sm mt-1">{errors.alcoholPercentage}</p>}
+            </div>
+          </div>
+
           {/* Barcode */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Barcode</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">code*</label>
             <input
               type="text"
-              name="barcode"
+              name="code"
               value={formData.barcode}
               onChange={handleChange}
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400"
-              placeholder="Optional barcode"
+              className={`w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 ${errors.barcode ? 'border-red-500' : 'border-slate-600'}`}
+              placeholder="Code"
             />
+            {errors.barcode && <p className="text-red-400 text-sm mt-1">{errors.barcode}</p>}
           </div>
 
           {/* Min Stock and Selling Price */}
@@ -192,6 +245,21 @@ export default function ProductForm({ product, onSave, onCancel, isLoading = fal
               />
               {errors.sellingPrice && <p className="text-red-400 text-sm mt-1">{errors.sellingPrice}</p>}
             </div>
+          </div>
+
+          {/* MRP */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">MRP <span className="text-slate-500 font-normal">(Maximum Retail Price, optional)</span></label>
+            <input
+              type="number"
+              name="mrp"
+              min="0"
+              value={formData.mrp}
+              onChange={handleChange}
+              className={`w-full px-4 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 ${errors.mrp ? 'border-red-500' : 'border-slate-600'}`}
+              placeholder="e.g., 550"
+            />
+            {errors.mrp && <p className="text-red-400 text-sm mt-1">{errors.mrp}</p>}
           </div>
 
           {/* Form Actions */}

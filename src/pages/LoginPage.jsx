@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, register } = useAuth()
   const navigate = useNavigate()
   const [isLogin, setIsLogin] = useState(true)
   const [username, setUsername] = useState('')
@@ -16,7 +16,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await login(username, password)
+      await isLogin ? login(username, password) : register(username, password)
       navigate('/dashboard')
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials')
@@ -72,7 +72,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                placeholder="••••••••"
+                placeholder="password"
                 required
               />
             </div>

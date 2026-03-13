@@ -26,6 +26,13 @@ export function AuthProvider({ children }) {
     setUsername(username)
   }
 
+  const register = async (username, password) => {
+    const { data } = await apiClient.post('/api/auth/register', { username, password })
+    localStorage.setItem('accessToken', data.accessToken)
+    localStorage.setItem('refreshToken', data.refreshToken)
+    setUsername(username)
+  }
+
   const logout = async () => {
     const refreshToken = localStorage.getItem('refreshToken')
     try {
@@ -37,7 +44,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ username, loading, login, logout, isAuthenticated: !!username }}>
+    <AuthContext.Provider value={{ username, loading, login, logout, register, isAuthenticated: !!username }}>
       {children}
     </AuthContext.Provider>
   )

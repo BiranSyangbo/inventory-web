@@ -1,123 +1,159 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import {
+  DollarSign, TrendingUp, FileText, AlertTriangle,
+  Clock, Package, CreditCard, Truck, ArrowUpCircle, ArrowDownCircle
+} from 'lucide-react'
 import apiClient from '../lib/apiClient'
-import InventoryChart from '../components/InventoryChart'
-import CategoryChart from '../components/CategoryChart'
-import LowStockAlerts from '../components/LowStockAlerts'
-import ValueChart from '../components/ValueChart'
+import { KPICard } from '../components/dashboard/KPICard'
+import { SalesLineChart } from '../components/charts/SalesLineChart'
+import { CategoryDonutChart } from '../components/charts/CategoryDonutChart'
+import { ProfitBarChart } from '../components/charts/ProfitBarChart'
+import { formatNPR, getLast30Days } from '../lib/utils'
+
+function useDashboard() {
+  return useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => apiClient.get('/api/reports/dashboard').then(r => r.data),
+    refetchInterval: 5 * 60 * 1000,
+    retry: 1,
+  })
+}
+
+function useDailySalesChart() {
+  const { from, to } = getLast30Days()
+  return useQuery({
+    queryKey: ['daily-sales-chart', from, to],
+    queryFn: () => apiClient.get('/api/reports/daily-sales', { params: { from, to } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+function useCategorySales() {
+  const { from, to } = getLast30Days()
+  return useQuery({
+    queryKey: ['category-sales-chart', from, to],
+    queryFn: () => apiClient.get('/api/reports/category-sales', { params: { from, to } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+function useTopProducts() {
+  const { from, to } = getLast30Days()
+  return useQuery({
+    queryKey: ['fast-moving-chart', from, to],
+    queryFn: () => apiClient.get('/api/reports/fast-moving-products', { params: { from, to, limit: 10 } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const [inventory, setInventory] = useState([])
-  const [lowStock, setLowStock] = useState([])
-  const [expiring, setExpiring] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { data: dash, isLoading, error } = useDashboard()
+  const { data: salesData } = useDailySalesChart()
+  const { data: categoryData } = useCategorySales()
+  const { data: topProducts } = useTopProducts()
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const [invRes, lowRes, expRes] = await Promise.all([
-          apiClient.get('/api/inventory'),
-          apiClient.get('/api/inventory/low-stock'),
-          apiClient.get('/api/inventory/expiring', { params: { days: 30 } }),
-        ])
-        setInventory(invRes.data)
-        setLowStock(lowRes.data)
-        setExpiring(expRes.data)
-      } catch (err) {
-        console.error(err)
-        setError('Failed to load dashboard data')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [])
-
-  const totalValue = inventory.reduce((sum, i) => sum + parseFloat(i.totalValue || 0), 0)
-  const categoryCount = new Set(inventory.map(i => i.category).filter(Boolean)).size
-
-  const inventoryChartData = [...inventory]
-    .sort((a, b) => b.totalQuantity - a.totalQuantity)
-    .slice(0, 10)
-    .map(i => ({ name: i.name, quantity: i.totalQuantity }))
-
-  const categoryMap = {}
-  inventory.forEach(i => {
-    const cat = i.category || 'Other'
-    categoryMap[cat] = (categoryMap[cat] || 0) + 1
-  })
-  const categoryChartData = Object.entries(categoryMap).map(([name, value]) => ({ name, value }))
-
-  const valueMap = {}
-  inventory.forEach(i => {
-    const cat = i.category || 'Other'
-    valueMap[cat] = (valueMap[cat] || 0) + parseFloat(i.totalValue || 0)
-  })
-  const valueCategoryData = Object.entries(valueMap).map(([name, value]) => ({ name, value }))
-
-  const fmt = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'NPR' }).format(n)
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full py-32">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4" />
-          <p className="text-slate-300">Loading dashboard...</p>
-        </div>
-      </div>
-    )
-  }
+  const kpis = [
+    {
+      title: "Today's Sales",
+      value: formatNPR(dash?.todaySales),
+      icon: DollarSign,
+      color: 'blue',
+      onClick: () => navigate('/reports/daily-sales'),
+    },
+    {
+      title: "Today's Profit",
+      value: formatNPR(dash?.todayProfit),
+      icon: TrendingUp,
+      color: 'green',
+    },
+    {
+      title: "Today's Invoices",
+      value: dash?.todayInvoiceCount ?? '—',
+      icon: FileText,
+      color: 'default',
+    },
+    {
+      title: 'Low Stock',
+      value: dash?.lowStockCount ?? '—',
+      icon: AlertTriangle,
+      color: (dash?.lowStockCount || 0) > 0 ? 'red' : 'green',
+      onClick: () => navigate('/inventory'),
+    },
+    {
+      title: 'Expiring Soon',
+      value: dash?.expiringCount ?? '—',
+      icon: Clock,
+      color: (dash?.expiringCount || 0) > 0 ? 'orange' : 'green',
+    },
+    {
+      title: 'Total Stock Value',
+      value: formatNPR(dash?.totalStockValue),
+      icon: Package,
+      color: 'default',
+    },
+    {
+      title: 'Customer Credit',
+      value: formatNPR(dash?.pendingCustomerCredit),
+      icon: CreditCard,
+      color: (dash?.pendingCustomerCredit || 0) > 0 ? 'orange' : 'default',
+    },
+    {
+      title: 'Supplier Outstanding',
+      value: formatNPR(dash?.pendingSupplierPayments),
+      icon: Truck,
+      color: (dash?.pendingSupplierPayments || 0) > 0 ? 'red' : 'green',
+      onClick: () => navigate('/reports/supplier-outstanding'),
+    },
+  ]
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Dashboard</h2>
-          <p className="text-slate-400 mt-1">Inventory overview</p>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Analytics overview · Auto-refreshes every 5 min</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => navigate('/purchases/new')} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition">
-            + New Purchase
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate('/purchases/new')}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-accent text-sm font-medium transition-colors"
+          >
+            <ArrowDownCircle className="h-4 w-4" />
+            New Purchase
           </button>
-          <button onClick={() => navigate('/sales/new')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
-            + New Sale
+          <button
+            onClick={() => navigate('/sales/new')}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors"
+          >
+            <ArrowUpCircle className="h-4 w-4" />
+            New Sale
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-lg text-red-200">{error}</div>
+        <div className="p-4 bg-destructive/20 border border-destructive/50 rounded-lg text-sm text-red-400">
+          Failed to load dashboard data. The reporting API may not be available.
+        </div>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Total Products',    value: inventory.length,    color: 'text-blue-400' },
-          { label: 'Total Stock Value', value: fmt(totalValue),      color: 'text-green-400' },
-          { label: 'Low Stock Items',   value: lowStock.length,      color: 'text-yellow-400' },
-          { label: 'Expiring (30d)',    value: expiring.length,      color: 'text-red-400' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <p className="text-slate-400 text-sm font-medium mb-2">{label}</p>
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-          </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map(kpi => (
+          <KPICard key={kpi.title} {...kpi} loading={isLoading} />
         ))}
       </div>
 
       {/* Charts */}
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <InventoryChart data={inventoryChartData} />
-          <CategoryChart data={categoryChartData} />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ValueChart data={valueCategoryData} totalValue={totalValue} />
-          <LowStockAlerts alerts={lowStock} />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SalesLineChart data={salesData || []} title="Daily Sales (Last 30 Days)" />
+        <CategoryDonutChart data={categoryData || []} title="Revenue by Category" dataKey="revenue" nameKey="category" />
       </div>
+
+      <ProfitBarChart data={topProducts || []} title="Top Selling Products" xKey="productName" yKey="totalRevenue" />
     </div>
   )
 }

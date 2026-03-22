@@ -124,7 +124,7 @@ function CreateSale() {
   useEffect(() => {
     Promise.all([
       apiClient.get('/api/customers').then(r => r.data),
-      apiClient.get('/api/products').then(r => r.data),
+      apiClient.get('/api/products?excludeQuantityZero=true').then(r => r.data),
     ]).then(([c, p]) => { setCustomers(c); setProducts(p) })
       .catch(() => toast.error('Failed to load form data'))
   }, [])

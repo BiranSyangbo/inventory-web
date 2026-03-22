@@ -33,8 +33,8 @@ const ENTITIES = [
         label: 'Sales',
         description: 'Import sales history with FIFO allocation',
         color: 'purple',
-        columns: ['invoice_number', 'sale_date', 'customer_name', 'payment_status', 'discount', 'vat_amount', 'notes', 'product_barcode*', 'quantity*', 'unit_price'],
-        example: 'INV-2026-00001,2026-01-20,Singh Wines,CREDIT,0,0,,RS-750,5,520.00',
+        columns: ['sale_date*', 'customer_name*', 'payment_status', 'product_code*', 'quantity*', 'unit_price*', 'notes'],
+        example: '2026-01-20,Singh Wines,CREDIT,GORKHA_STRONG_650ML,5,520.00,',
     },
 ]
 
